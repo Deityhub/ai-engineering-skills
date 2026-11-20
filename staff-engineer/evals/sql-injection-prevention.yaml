@@ -1,0 +1,59 @@
+name: sql-injection-prevention
+description: "Verify security scanner detects SQL injection vulnerabilities and suggests parameterized fixes"
+category: security
+priority: critical
+
+input:
+  code_samples:
+    - file: "vulnerable.go"
+      content: |
+        func GetUser(db *sql.DB, id string) (*User, error) {
+            query := "SELECT * FROM users WHERE id = '" + id + "'"
+            row := db.QueryRow(query)
+            // ...
+        }
+    - file: "vulnerable.py"
+      content: |
+        def get_user(conn, user_id):
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM users WHERE id = '{user_id}'")
+            return cursor.fetchone()
+    - file: "vulnerable.ts"
+      content: |
+        async function getUser(db: Pool, id: string) {
+          const result = await db.query(`SELECT * FROM users WHERE id = '${id}'`);
+          return result.rows[0];
+        }
+    - file: "safe.go"
+      content: |
+        func GetUser(db *sql.DB, id string) (*User, error) {
+            query := "SELECT * FROM users WHERE id = $1"
+            row := db.QueryRow(query, id)
+            // ...
+        }
+
+expected_findings:
+  - file: "vulnerable.go"
+    rule: "sql-injection"
+    severity: "critical"
+    line: 2
+    fix: "Use parameterized query: $1 placeholder with QueryRow(query, id)"
+  - file: "vulnerable.py"
+    rule: "sql-injection"
+    severity: "critical"
+    line: 3
+    fix: "Use parameterized query: cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))"
+  - file: "vulnerable.ts"
+    rule: "sql-injection"
+    severity: "critical"
+    line: 2
+    fix: "Use parameterized query: await db.query('SELECT * FROM users WHERE id = $1', [id])"
+  - file: "safe.go"
+    rule: "sql-injection"
+    should_not_flag: true
+
+success_criteria:
+  - all_vulnerable_flagged: true
+  - safe_code_not_flagged: true
+  - fixes_suggested: true
+  - sarif_output_valid: true

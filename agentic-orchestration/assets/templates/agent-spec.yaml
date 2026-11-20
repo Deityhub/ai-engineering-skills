@@ -1,0 +1,51 @@
+# Agent Specification Template
+# Copy to agents/<name>.yaml and customize
+
+name: {{ .AgentName }}
+description: "{{ .Description }}"
+type: {{ .Type }}  # specialist | planner | coordinator | critic
+model: {{ .Model }}  # e.g., claude-3.5-sonnet, gpt-4o, gemini-1.5-pro
+temperature: {{ .Temperature | default 0.1 }}
+tools:
+  - {{ .Tool1 }}  # e.g., scan-security.py
+  - {{ .Tool2 }}  # e.g., threat-model.md
+  - {{ .Tool3 }}
+input_schema:
+  type: object
+  properties:
+    spec: { type: string }
+    {{ .AdditionalInputs }}
+  required: [spec]
+output_schema:
+  type: object
+  properties:
+    {{ .OutputProperties }}
+  required: [{{ .RequiredOutputs }}]
+timeout_seconds: {{ .Timeout | default 300 }}
+retry_policy:
+  max_attempts: {{ .MaxAttempts | default 2 }}
+  backoff: {{ .Backoff | default exponential }}
+  base_delay_seconds: {{ .BaseDelay | default 10 }}
+
+# Agent Types Reference:
+# planner: Task -> DAG decomposition
+# security: Threat model, OWASP, secrets, SAST
+# performance: Profiling, load test, budgets
+# architect: Coupling, boundaries, ADRs, diagrams
+# coder: Implementation, tests, language tools
+# tester: Integration, contract, E2E, coverage
+# critic: Adversarial review, fuzzing, mutation testing
+# coordinator: Consensus, weighted voting, conflict resolution
+
+# Model Recommendations:
+# - Complex reasoning: claude-3.5-sonnet, gpt-4o
+# - Code generation: gpt-4o, claude-3.5-sonnet
+# - Fast/cheap: gemini-1.5-flash, gpt-4o-mini
+# - Local: ollama/llama3, codellama
+
+# Tool Examples:
+# - scan-security.py (security)
+# - analyze-architecture.py (architect)
+# - profile-performance.py (performance)
+# - generate-component.py (coder)
+# - audit-accessibility.py (tester for UI)

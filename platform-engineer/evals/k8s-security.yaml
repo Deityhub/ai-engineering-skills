@@ -1,0 +1,46 @@
+name: k8s-security
+description: "Verify K8s analyzer catches security misconfigurations"
+category: kubernetes-security
+priority: critical
+
+input:
+  manifests_dir: "test/fixtures/k8s"
+
+expected_findings:
+  critical:
+    - category: "security"
+      message_contains: "runs as root"
+      resource_kind: "Deployment"
+    - category: "security"
+      message_contains: "privileged"
+      resource_kind: "Deployment"
+    - category: "configuration"
+      message_contains: "latest"
+      resource_kind: "Deployment"
+  major:
+    - category: "resources"
+      message_contains: "missing resource requests"
+    - category: "resources"
+      message_contains: "missing resource limits"
+    - category: "reliability"
+      message_contains: "missing livenessProbe"
+    - category: "reliability"
+      message_contains: "missing readinessProbe"
+    - category: "security"
+      message_contains: "allows privilege escalation"
+    - category: "security"
+      message_contains: "root filesystem not read-only"
+  minor:
+    - category: "security"
+      message_contains: "doesn't drop capabilities"
+    - category: "reliability"
+      message_contains: "missing startupProbe"
+    - category: "deployment"
+      message_contains: "should use RollingUpdate strategy"
+
+success_criteria:
+  - all_critical_found: true
+  - all_major_found: true
+  - all_minor_found: true
+  - no_false_positives: true
+  - report_format_valid: true

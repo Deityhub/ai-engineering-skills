@@ -1,0 +1,97 @@
+name: consensus-voting
+description: "Verify consensus engine computes correct results for various voting scenarios"
+category: orchestration
+priority: critical
+
+input:
+  test_cases:
+    - name: "security_approval_quorum_reached"
+      rule: "security_approval"
+      votes:
+        - agent: "security"
+          decision: "approve"
+          confidence: 0.9
+          reasoning: "No critical findings"
+        - agent: "architect"
+          decision: "approve"
+          confidence: 0.8
+          reasoning: "Architecture sound"
+        - agent: "performance"
+          decision: "approve"
+          confidence: 0.7
+          reasoning: "Meets budgets"
+        - agent: "tester"
+          decision: "approve"
+          confidence: 0.9
+          reasoning: "Tests pass"
+      expected:
+        decision: "approve"
+        quorum_reached: true
+        confidence: 0.85  # (0.4*0.9 + 0.3*0.8 + 0.15*0.7 + 0.15*0.9) / 1.0
+    - name: "security_veto"
+      rule: "security_approval"
+      votes:
+        - agent: "security"
+          decision: "reject"
+          confidence: 0.95
+          reasoning: "Critical SQL injection found"
+        - agent: "architect"
+          decision: "approve"
+          confidence: 0.8
+          reasoning: "Architecture sound"
+        - agent: "performance"
+          decision: "approve"
+          confidence: 0.7
+          reasoning: "Meets budgets"
+        - agent: "tester"
+          decision: "approve"
+          confidence: 0.9
+          reasoning: "Tests pass"
+      expected:
+        decision: "reject"
+        quorum_reached: true
+        confidence: 1.0
+        reasoning_contains: "Veto by security"
+    - name: "no_quorum_escalate"
+      rule: "production_deploy"
+      votes:
+        - agent: "security"
+          decision: "approve"
+          confidence: 0.6
+        - agent: "architect"
+          decision: "approve"
+          confidence: 0.6
+        - agent: "performance"
+          decision: "reject"
+          confidence: 0.7
+        - agent: "tester"
+          decision: "reject"
+          confidence: 0.8
+      expected:
+        decision: "escalate"
+        quorum_reached: false
+    - name: "production_deploy_quorum"
+      rule: "production_deploy"
+      votes:
+        - agent: "security"
+          decision: "approve"
+          confidence: 0.9
+        - agent: "architect"
+          decision: "approve"
+          confidence: 0.9
+        - agent: "performance"
+          decision: "approve"
+          confidence: 0.8
+        - agent: "tester"
+          decision: "approve"
+          confidence: 0.9
+      expected:
+        decision: "approve"
+        quorum_reached: true
+
+success_criteria:
+  - all_decisions_correct: true
+  - quorum_calculations_correct: true
+  - veto_logic_works: true
+  - confidence_calculations_correct: true
+  - escalation_on_no_quorum: true

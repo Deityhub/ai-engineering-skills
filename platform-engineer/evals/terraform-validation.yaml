@@ -1,0 +1,44 @@
+name: terraform-validation
+description: "Verify Terraform validator catches formatting, validation, and policy violations"
+category: iac-validation
+priority: critical
+
+input:
+  terraform_dir: "test/fixtures/terraform"
+  policy_dir: "test/fixtures/policies"
+  checks:
+    - fmt
+    - validate
+    - plan
+    - policy
+
+expected_results:
+  fmt:
+    passed: false
+    issues:
+      - "misaligned arguments"
+      - "inconsistent indentation"
+  validate:
+    passed: false
+    errors:
+      - "Missing required argument"
+      - "Invalid value for variable"
+  plan:
+    passed: true
+    has_changes: true
+  policy:
+    passed: false
+    violations:
+      - rule: "required_tags"
+        resource: "aws_instance.web"
+        message: "missing required tag: Environment"
+      - rule: "s3_versioning"
+        resource: "aws_s3_bucket.data"
+        message: "versioning not enabled"
+
+success_criteria:
+  - all_checks_run: true
+  - fmt_catches_issues: true
+  - validate_catches_errors: true
+  - policy_catches_violations: true
+  - json_output_valid: true

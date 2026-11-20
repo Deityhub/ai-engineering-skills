@@ -1,0 +1,91 @@
+name: context-compression-ratio
+description: "Verify context optimizer compresses reports to <3000 tokens while preserving critical info"
+category: context-optimization
+priority: high
+
+input:
+  review_report: |
+    # Code Review Report - PR #247
+    
+    ## Summary
+    47 files changed, 2,341 insertions(+), 1,102 deletions(-)
+    
+    ## Critical Findings (3)
+    ### 1. SQL Injection in UserRepository.FindByEmail
+    **File**: `adapters/db/user_repo.go:42`
+    **Issue**: String concatenation in query
+    **Fix**: Use parameterized query with $1 placeholder
+    
+    ### 2. Missing Authentication on Admin Endpoints
+    **File**: `adapters/http/admin_handler.go:15-45`
+    **Issue**: No middleware checking admin role
+    **Fix**: Add `RequireRole("admin")` middleware
+    
+    ### 3. Hardcoded JWT Secret
+    **File**: `config/auth.go:12`
+    **Issue**: Secret committed to source control
+    **Fix**: Move to environment variable, rotate immediately
+    
+    ## Major Findings (12)
+    ### 4. Circular Dependency: domain/order <-> domain/payment
+    **Files**: `domain/order/entity.go:8`, `domain/payment/entity.go:12`
+    **Issue**: Mutual imports create cycle
+    **Fix**: Extract shared types to domain/shared/events.go
+    
+    ### 5. Cache Stampede Risk on Product Catalog
+    **File**: `application/catalog/service.go:67`
+    **Issue**: No singleflight for cache miss
+    **Fix**: Use `singleflight.Group` for coalescing
+    
+    ... (7 more major findings)
+    
+    ## Minor Findings (31)
+    - Unused imports in 8 files
+    - Inconsistent error wrapping (use `fmt.Errorf("...: %w", err)`)
+    - Missing struct tags for JSON serialization
+    - Variable naming inconsistencies
+    
+    ## Token Diff
+    ### Added
+    - `--color-brand-primary: #1a73e8`
+    - `--space-18: 72px`
+    
+    ### Modified
+    - `--color-error`: `#dc2626` → `#ef4444` (lighter for dark mode contrast)
+    - `--shadow-lg`: updated spread radius
+    
+    ### Removed
+    - `--color-deprecated-warning`
+    
+    ## Decisions Made
+    1. Adopt hexagonal architecture for new modules (ADR-012)
+    2. Migrate to structured JSON logging (ADR-013)
+    3. Use Go 1.22+ rangefunc for iterators
+    
+    ## Next Steps
+    1. Fix critical findings before merge
+    2. Address major findings in follow-up PR
+    3. Update design tokens per diff
+    4. Schedule architecture review for domain split
+
+target_tokens: 3000
+compression_levels:
+  - L1: "Executive summary only (decisions, critical count, next steps)"
+  - L2: "L1 + critical findings with file:line"
+  - L3: "L2 + major findings summary"
+  - L4: "Full report (original)"
+
+expected_output:
+  L1_tokens: "< 500"
+  L2_tokens: "< 1500"
+  L3_tokens: "< 3000"
+  L4_tokens: "~8000"
+
+success_criteria:
+  - L3_under_token_budget: true
+  - critical_findings_preserved: true
+  - token_diff_preserved: true
+  - decisions_preserved: true
+  - next_steps_preserved: true
+  - minor_findings_summarized: true
+  - handoff_format_valid: true

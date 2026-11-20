@@ -1,0 +1,62 @@
+name: login-page-design
+description: "Generate an accessible, token-compliant login page from specification"
+category: component-generation
+priority: critical
+
+input:
+  spec:
+    name: LoginPage
+    type: page
+    description: "User authentication page with email/password and social login"
+    framework: react
+    props:
+      - name: onSubmit
+        type: "(credentials: Credentials) => Promise<void>"
+        required: true
+      - name: onSocialLogin
+        type: "(provider: 'google' | 'github') => Promise<void>"
+        required: false
+      - name: error
+        type: "string | null"
+        required: false
+    accessibility:
+      - "WCAG 2.1 AA compliant"
+      - "Visible focus states on all interactive elements"
+      - "Proper label/input association"
+      - "Error message announced via aria-live"
+      - "Skip link present"
+    responsive:
+      - mobile: "stacked, full-width inputs"
+      - tablet: "centered card, max-width 400px"
+      - desktop: "centered card, max-width 400px"
+
+expected_outputs:
+  - file: "LoginPage.tsx"
+    assertions:
+      - contains: "forwardRef"
+      - contains: "aria-invalid"
+      - contains: "aria-describedby"
+      - contains: "aria-live=\"polite\""
+      - contains: "var(--space-"
+      - contains: "var(--color-"
+      - contains: "var(--radius-"
+      - contains: "var(--shadow-"
+      - contains: "prefers-reduced-motion"
+      - not_contains: "outline: none"
+      - not_contains: "#2563eb"  # no magic colors
+      - not_contains: "16px"     # no magic spacing
+  - file: "LoginPage.module.css"
+    assertions:
+      - contains: "@media (prefers-reduced-motion: reduce)"
+      - contains: "focus-visible"
+      - contains: "var(--space-"
+      - contains: "var(--color-"
+
+validation_script: "scripts/validate-tokens.py --path LoginPage.tsx --path LoginPage.module.css"
+accessibility_script: "scripts/audit-accessibility.py --path LoginPage.tsx --path LoginPage.module.css"
+
+success_criteria:
+  - token_compliance: 100%
+  - accessibility_violations: 0 critical, 0 major
+  - responsive_breakpoints_used: true
+  - focus_visible_present: true

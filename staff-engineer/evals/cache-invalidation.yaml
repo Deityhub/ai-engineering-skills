@@ -1,0 +1,50 @@
+name: cache-invalidation
+description: "Verify performance profiler detects cache miss patterns and suggests invalidation strategies"
+category: performance
+priority: high
+
+input:
+  benchmark_command: "go test -bench=BenchmarkCache -benchmem"
+  budget: "latency:p99<50ms,throughput:>10000rps,memory:<10MB"
+  baseline_file: "benchmarks/baseline.json"
+
+code_patterns:
+  - file: "cache/bad.go"
+    content: |
+        func (c *Cache) Get(key string) (value interface{}, ok bool) {
+            c.mu.RLock()
+            defer c.mu.RUnlock()
+            // No TTL check - stale data served forever
+            val, ok := c.data[key]
+            return val, ok
+        }
+  - file: "cache/good.go"
+    content: |
+        func (c *Cache) Get(key string) (value interface{}, ok bool) {
+            c.mu.RLock()
+            entry, ok := c.data[key]
+            c.mu.RUnlock()
+            if !ok || time.Since(entry.created) > c.ttl {
+                return nil, false
+            }
+            return entry.value, true
+        }
+
+expected_analysis:
+  - pattern: "missing-ttl-validation"
+    severity: "major"
+    file: "cache/bad.go"
+    suggestion: "Add TTL check on read; consider lazy expiration or background janitor"
+  - pattern: "cache-stampede-risk"
+    severity: "major"
+    suggestion: "Use singleflight/coalescing for cache misses under load"
+  - pattern: "no-invalidation-on-write"
+    severity: "critical"
+    suggestion: "Invalidate or update cache on write; use write-through or cache-aside with TTL"
+
+success_criteria:
+  - cache_miss_rate_reported: true
+  - latency_p99_within_budget: true
+  - memory_within_budget: true
+  - invalidation_strategy_suggested: true
+  - regression_detected_vs_baseline: true

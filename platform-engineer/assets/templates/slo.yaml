@@ -1,0 +1,74 @@
+# SLO Definitions for {{ .Service }}
+# Apply with: kubectl apply -f slo.yaml (if using PrometheusRule CRD)
+# Or import into your SLO dashboard (Grafana, Nobl9, etc.)
+
+slos:
+  - name: {{ .Service }}-availability
+    description: "Successful requests / Total requests (5xx = fail)"
+    sli_query: |
+      sum(rate(http_requests_total{job="{{ .Service }}",code!~"5.."}[5m]))
+      /
+      sum(rate(http_requests_total{job="{{ .Service }}"}[5m]))
+    target: 0.9995  # 99.95%
+    window: "30d"
+    alert_on_burn_rate: 1.0
+
+  - name: {{ .Service }}-latency-p99
+    description: "Request latency p99 < 500ms"
+    sli_query: |
+      histogram_quantile(0.99,
+        sum(rate(http_request_duration_seconds_bucket{job="{{ .Service }}"}[5m])) by (le)
+      )
+    target: 0.5  # 500ms in seconds
+    window: "7d"
+    alert_on_burn_rate: 2.0
+
+  - name: {{ .Service }}-throughput
+    description: "Minimum throughput"
+    sli_query: |
+      sum(rate(http_requests_total{job="{{ .Service }}"}[5m]))
+    target: 100  # requests per second
+    window: "1h"
+    alert_on_burn_rate: 2.0
+
+  - name: {{ .Service }}-data-durability
+    description: "Cross-region replication lag < 1s"
+    sli_query: |
+      max by (instance) (pg_replication_lag_seconds{job="postgres"})
+    target: 1.0  # 1 second
+    window: "30d"
+    alert_on_burn_rate: 5.0
+
+# Error Budget Alerts (PrometheusRule format)
+# apiVersion: monitoring.coreos.com/v1
+# kind: PrometheusRule
+# metadata:
+#   name: {{ .Service }}-error-budget
+# spec:
+#   groups:
+#     - name: {{ .Service }}-error-budget
+#       rules:
+#         - alert: {{ .Service }}HighErrorRateBurnRate
+#           expr: |
+#             sum(rate(http_requests_total{job="{{ .Service }}",code=~"5.."}[5m]))
+#             /
+#             sum(rate(http_requests_total{job="{{ .Service }}"}[5m]))
+#             > 0.05
+#           for: 2m
+#           labels:
+#             severity: critical
+#             team: platform
+#           annotations:
+#             summary: "{{ .Service }} error rate >5% (2m burn rate)"
+#             runbook_url: "https://runbooks.example.com/{{ .Service }}-high-error-rate"
+#         - alert: {{ .Service }}ErrorBudgetExhaustion
+#           expr: |
+#             (1 - (sum(rate(http_requests_total{job="{{ .Service }}",code!~"5.."}[30d])) / sum(rate(http_requests_total{job="{{ .Service }}"}[30d]))) / (1 - 0.9995)
+#             > 2
+#           for: 5m
+#           labels:
+#             severity: warning
+#             team: platform
+#           annotations:
+#             summary: "{{ .Service }} error budget burn rate >2x"
+#             runbook_url: "https://runbooks.example.com/{{ .Service }}-error-budget"

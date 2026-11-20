@@ -1,0 +1,35 @@
+name: task-decomposition
+description: "Verify task decomposer generates valid DAGs for different task types"
+category: orchestration
+priority: critical
+
+input:
+  test_cases:
+    - task: "Add real-time notifications with WebSocket and fallback"
+      expected_template: "feature"
+      expected_nodes: ["security_review", "perf_baseline", "arch_review", "implementation", "integration_test", "consensus"]
+      expected_edges:
+        - ["security_review", "implementation"]
+        - ["arch_review", "implementation"]
+        - ["implementation", "integration_test"]
+        - ["perf_baseline", "integration_test"]
+        - ["security_review", "consensus"]
+        - ["perf_baseline", "consensus"]
+        - ["arch_review", "consensus"]
+        - ["integration_test", "consensus"]
+      expected_checkpoints: ["consensus"]
+    - task: "Refactor authentication module to use new library"
+      expected_template: "refactor"
+      expected_nodes: ["analyze_codebase", "identify_candidates", "risk_assessment", "refactor", "validate", "consensus"]
+    - task: "Production outage: API returning 500 errors"
+      expected_template: "incident"
+      expected_nodes: ["triage", "diagnose", "impact_assessment", "mitigate", "verify", "postmortem"]
+
+success_criteria:
+  - correct_template_detected: true
+  - all_expected_nodes_present: true
+  - all_expected_edges_present: true
+  - checkpoints_identified: true
+  - consensus_rules_present: true
+  - schemas_valid_json_schema: true
+  - no_cycles_in_dag: true

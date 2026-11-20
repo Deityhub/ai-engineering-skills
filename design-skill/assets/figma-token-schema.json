@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Figma Tokens / Style Dictionary Schema",
+  "description": "Schema for design tokens compatible with Figma Tokens plugin and Style Dictionary",
+  "type": "object",
+  "properties": {
+    "spacing": {
+      "type": "object",
+      "patternProperties": {
+        "^\\d+$": {
+          "type": "object",
+          "required": ["value", "type"],
+          "properties": {
+            "value": { "type": "string", "pattern": "^\\d+(\\.\\d+)?(px|rem|em)$" },
+            "type": { "const": "dimension" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "color": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-]*$": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "color" },
+            "value": {
+              "oneOf": [
+                { "type": "string", "pattern": "^#[0-9a-fA-F]{3,8}$" },
+                { "type": "object", "properties": {
+                  "light": { "type": "string", "pattern": "^#[0-9a-fA-F]{3,8}$" },
+                  "dark": { "type": "string", "pattern": "^#[0-9a-fA-F]{3,8}$" }
+                }, "required": ["light", "dark"] }
+              ]
+            },
+            "hover": { "$ref": "#/properties/color/patternProperties/^[a-zA-Z][a-zA-Z0-9-]*$/properties/value" },
+            "active": { "$ref": "#/properties/color/patternProperties/^[a-zA-Z][a-zA-Z0-9-]*$/properties/value" },
+            "disabled": { "$ref": "#/properties/color/patternProperties/^[a-zA-Z][a-zA-Z0-9-]*$/properties/value" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "properties": {
+        "fontFamily": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9-]*$": {
+              "type": "object",
+              "required": ["value", "type"],
+              "properties": {
+                "value": { "type": "string" },
+                "type": { "const": "fontFamily" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        },
+        "fontSize": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9-]*$": {
+              "type": "object",
+              "required": ["value", "type"],
+              "properties": {
+                "value": { "type": "string", "pattern": "^\\d+(\\.\\d+)?(px|rem|em)$" },
+                "type": { "const": "fontSize" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        },
+        "fontWeight": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9-]*$": {
+              "type": "object",
+              "required": ["value", "type"],
+              "properties": {
+                "value": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
+                "type": { "const": "fontWeight" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        },
+        "lineHeight": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9-]*$": {
+              "type": "object",
+              "required": ["value", "type"],
+              "properties": {
+                "value": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
+                "type": { "const": "lineHeight" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        },
+        "letterSpacing": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9-]*$": {
+              "type": "object",
+              "required": ["value", "type"],
+              "properties": {
+                "value": { "type": "string" },
+                "type": { "const": "dimension" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "borderRadius": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-]*$": {
+          "type": "object",
+          "required": ["value", "type"],
+          "properties": {
+            "value": { "type": "string", "pattern": "^\\d+(\\.\\d+)?(px|rem|em|%)$" },
+            "type": { "const": "dimension" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "shadow": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-]*$": {
+          "type": "object",
+          "required": ["value", "type"],
+          "properties": {
+            "value": { "type": "string" },
+            "type": { "const": "shadow" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "breakpoints": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-]*$": {
+          "type": "object",
+          "required": ["value", "type"],
+          "properties": {
+            "value": { "type": "string", "pattern": "^\\d+(\\.\\d+)?px$" },
+            "type": { "const": "dimension" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "zIndex": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-]*$": {
+          "type": "object",
+          "required": ["value", "type"],
+          "properties": {
+            "value": { "type": "integer" },
+            "type": { "const": "number" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-]*$": {
+          "type": "object",
+          "required": ["value", "type"],
+          "properties": {
+            "value": { "type": "string" },
+            "type": { "const": "transition" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "required": ["spacing", "color", "typography", "borderRadius", "shadow", "breakpoints"],
+  "additionalProperties": false
+}

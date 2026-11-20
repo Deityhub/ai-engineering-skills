@@ -1,0 +1,56 @@
+name: responsive-breakpoints
+description: "Verify responsive design uses token-defined breakpoints and fluid typography"
+category: responsive-design
+priority: high
+
+input:
+  paths:
+    - "src/components"
+    - "src/pages"
+    - "styles"
+  token_file: "references/token-reference.md"
+
+expected_breakpoints:
+  - name: "mobile"
+    min_width: "320px"
+    max_width: "639px"
+    token: "var(--breakpoint-sm)"  # 640px
+  - name: "tablet"
+    min_width: "640px"
+    max_width: "1023px"
+    token: "var(--breakpoint-md)"  # 768px
+  - name: "desktop"
+    min_width: "1024px"
+    max_width: "1279px"
+    token: "var(--breakpoint-lg)"  # 1024px
+  - name: "wide"
+    min_width: "1280px"
+    max_width: "1535px"
+    token: "var(--breakpoint-xl)"  # 1280px
+  - name: "ultrawide"
+    min_width: "1536px"
+    token: "var(--breakpoint-2xl)"  # 1536px
+
+expected_patterns:
+  - "@media (min-width: var(--breakpoint-sm))"
+  - "@media (min-width: var(--breakpoint-md))"
+  - "@media (min-width: var(--breakpoint-lg))"
+  - "@media (min-width: var(--breakpoint-xl))"
+  - "@media (min-width: var(--breakpoint-2xl))"
+  - "clamp("  # fluid typography
+  - "container-type: inline-size"  # container queries
+
+forbidden_patterns:
+  - "@media (min-width: 640px)"   # magic breakpoint
+  - "@media (min-width: 768px)"   # magic breakpoint
+  - "@media (min-width: 1024px)"  # magic breakpoint
+  - "@media (min-width: 1280px)"  # magic breakpoint
+  - "@media (min-width: 1536px)"  # magic breakpoint
+  - "font-size: 16px"             # fixed typography at breakpoint
+
+success_criteria:
+  - all_media_queries_use_tokens: true
+  - fluid_typography_used: true
+  - container_queries_where_appropriate: true
+  - no_magic_breakpoints: true
+  - mobile_first_approach: true

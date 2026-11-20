@@ -1,0 +1,204 @@
+{
+  "dag_id": "feature-{{ .TaskSlug }}",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "security_review",
+      "agent_type": "security",
+      "description": "Security review for: {{ .Task }}",
+      "dependencies": [],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spec": { "type": "string" },
+          "code_paths": { "type": "array", "items": { "type": "string" } },
+          "arch_decisions": { "type": "object" }
+        },
+        "required": ["spec"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+                "category": { "type": "string" },
+                "file": { "type": "string" },
+                "line": { "type": "integer" },
+                "description": { "type": "string" },
+                "fix": { "type": "string" }
+              },
+              "required": ["severity", "category", "description"]
+            }
+          },
+          "risk_score": { "type": "number", "minimum": 0, "maximum": 10 },
+          "approved": { "type": "boolean" },
+          "summary": { "type": "string" }
+        },
+        "required": ["findings", "risk_score", "approved", "summary"]
+      },
+      "timeout_seconds": 300,
+      "retry_policy": { "max_attempts": 2, "backoff": "exponential" },
+      "checkpoint": false
+    },
+    {
+      "id": "perf_baseline",
+      "agent_type": "performance",
+      "description": "Performance baseline for: {{ .Task }}",
+      "dependencies": [],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spec": { "type": "string" },
+          "code_paths": { "type": "array", "items": { "type": "string" } },
+          "arch_decisions": { "type": "object" }
+        },
+        "required": ["spec"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "baseline_metrics": { "type": "object" },
+          "budgets": { "type": "object" },
+          "bottlenecks": { "type": "array" },
+          "recommendations": { "type": "array" },
+          "approved": { "type": "boolean" }
+        },
+        "required": ["baseline_metrics", "budgets", "approved"]
+      },
+      "timeout_seconds": 600,
+      "retry_policy": { "max_attempts": 2, "backoff": "exponential" },
+      "checkpoint": false
+    },
+    {
+      "id": "arch_review",
+      "agent_type": "architect",
+      "description": "Architecture review for: {{ .Task }}",
+      "dependencies": [],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spec": { "type": "string" },
+          "code_paths": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["spec"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "decisions": { "type": "array" },
+          "boundary_violations": { "type": "array" },
+          "coupling_metrics": { "type": "object" },
+          "diagram": { "type": "string" },
+          "approved": { "type": "boolean" }
+        },
+        "required": ["decisions", "boundary_violations", "approved"]
+      },
+      "timeout_seconds": 300,
+      "retry_policy": { "max_attempts": 2, "backoff": "exponential" },
+      "checkpoint": false
+    },
+    {
+      "id": "implementation",
+      "agent_type": "coder",
+      "description": "Implementation of: {{ .Task }}",
+      "dependencies": ["security_review", "arch_review"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spec": { "type": "string" },
+          "security_findings": { "type": "array" },
+          "arch_decisions": { "type": "object" },
+          "perf_budgets": { "type": "object" }
+        },
+        "required": ["spec"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "code_paths": { "type": "array", "items": { "type": "string" } },
+          "test_results": { "type": "object" },
+          "artifacts": { "type": "array" },
+          "coverage": { "type": "number" }
+        },
+        "required": ["code_paths", "test_results"]
+      },
+      "timeout_seconds": 1800,
+      "retry_policy": { "max_attempts": 3, "backoff": "exponential" },
+      "checkpoint": false
+    },
+    {
+      "id": "integration_test",
+      "agent_type": "tester",
+      "description": "Integration testing for: {{ .Task }}",
+      "dependencies": ["implementation", "perf_baseline"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spec": { "type": "string" },
+          "code_paths": { "type": "array", "items": { "type": "string" } },
+          "perf_baseline": { "type": "object" }
+        },
+        "required": ["spec", "code_paths"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "test_results": { "type": "object" },
+          "coverage": { "type": "number" },
+          "critical_paths_passed": { "type": "boolean" },
+          "artifacts": { "type": "array" }
+        },
+        "required": ["test_results", "critical_paths_passed"]
+      },
+      "timeout_seconds": 600,
+      "retry_policy": { "max_attempts": 2, "backoff": "exponential" },
+      "checkpoint": false
+    },
+    {
+      "id": "consensus",
+      "agent_type": "coordinator",
+      "description": "Consensus and final decision for: {{ .Task }}",
+      "dependencies": ["security_review", "perf_baseline", "arch_review", "integration_test"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "all_reports": { "type": "object" }
+        },
+        "required": ["all_reports"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "decision": { "type": "string", "enum": ["approve", "reject", "escalate"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "reasoning": { "type": "string" }
+        },
+        "required": ["decision", "confidence", "reasoning"]
+      },
+      "timeout_seconds": 120,
+      "retry_policy": { "max_attempts": 1 },
+      "checkpoint": true
+    }
+  ],
+  "edges": [
+    ["security_review", "implementation"],
+    ["arch_review", "implementation"],
+    ["implementation", "integration_test"],
+    ["perf_baseline", "integration_test"],
+    ["security_review", "consensus"],
+    ["perf_baseline", "consensus"],
+    ["arch_review", "consensus"],
+    ["integration_test", "consensus"]
+  ],
+  "checkpoints": ["consensus"],
+  "consensus_rules": {
+    "consensus": {
+      "quorum": 0.66,
+      "weights": { "security": 0.3, "architect": 0.3, "performance": 0.2, "tester": 0.2 }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+name: dark-mode-tokens
+description: "Verify design tokens have proper dark mode counterparts and CSS prefers-color-scheme support"
+category: token-validation
+priority: high
+
+input:
+  token_file: "references/token-reference.md"
+  css_output: "scripts/extract-tokens.py --format css"
+
+expected_tokens_with_dark_mode:
+  - color-primary
+  - color-primary-hover
+  - color-primary-active
+  - color-primary-disabled
+  - color-secondary
+  - color-secondary-hover
+  - color-error
+  - color-error-hover
+  - color-success
+  - color-warning
+  - color-surface
+  - color-surface-hover
+  - color-surface-elevated
+  - color-text-primary
+  - color-text-secondary
+  - color-text-tertiary
+  - color-text-inverse
+  - color-border
+  - color-border-hover
+  - color-border-focus
+  - shadow-sm
+  - shadow-md
+  - shadow-lg
+  - shadow-xl
+
+expected_css_structure:
+  - ":root {"
+  - "--color-primary: #2563eb;"
+  - "@media (prefers-color-scheme: dark) {"
+  - "--color-primary: #3b82f6;"
+  - "}"
+
+expected_json_structure:
+  - "color.primary.value.light"
+  - "color.primary.value.dark"
+  - "color.primary.hover.value.light"
+  - "color.primary.hover.value.dark"
+
+success_criteria:
+  - all_semantic_colors_have_dark_mode: true
+  - css_custom_properties_valid: true
+  - json_format_valid: true
+  - prefers_color_scheme_media_query_present: true
+  - contrast_ratios_maintained_in_dark: true  # >= 4.5:1 for text

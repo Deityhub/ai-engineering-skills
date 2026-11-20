@@ -1,0 +1,41 @@
+name: testing-patterns
+description: "Verify testing patterns reference covers required topics and staff engineer enforces them in reviews"
+category: testing
+priority: high
+
+input:
+  reference_file: "references/testing-patterns.md"
+  required_sections:
+    - "Test Pyramid"
+    - "Unit Testing"
+    - "Integration Testing"
+    - "Contract Testing"
+    - "E2E Testing"
+    - "Test Organization"
+    - "CI/CD Integration"
+    - "Anti-Patterns"
+    - "Language-Specific Tooling"
+    - "Staff Engineer Checklist"
+
+expected_content:
+  - "Test Pyramid"
+  - "Given-When-Then"
+  - "Fakes > Stubs > Spies > Mocks"
+  - "Property-Based Testing"
+  - "testcontainers"
+  - "Consumer-Driven Contracts"
+  - "Pact"
+  - "Playwright"
+  - "Mutation testing"
+  - "Coverage Thresholds"
+  - "Anti-Patterns"
+
+success_criteria:
+  - all_sections_present: true
+  - all_keywords_found: true
+  - code_examples_for_languages:
+      - Python
+      - TypeScript
+      - Go
+  - anti_patterns_listed: true
+  - checklist_actionable: true

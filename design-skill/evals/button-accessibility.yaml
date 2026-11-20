@@ -1,0 +1,52 @@
+name: button-accessibility
+description: "Audit button components for WCAG 2.1 AA compliance"
+category: accessibility-audit
+priority: critical
+
+input:
+  files:
+    - "components/Button.tsx"
+    - "components/Button.module.css"
+  checks:
+    - contrast
+    - focus-visible
+    - keyboard-operable
+    - aria-label-on-icon-only
+    - touch-target-size
+    - reduced-motion
+
+expected_findings:
+  # These should be FLAGGED as violations
+  critical:
+    - file: "Button.tsx"
+      line_contains: "outline: none"
+      rule: "focus-visible"
+      fix: "Remove outline: none; use :focus-visible with visible ring"
+    - file: "Button.tsx"
+      line_contains: "onClick"
+      not_contains: "onKeyDown"
+      rule: "keyboard-operable"
+      fix: "Add onKeyDown handler for Enter/Space"
+  major:
+    - file: "Button.module.css"
+      line_contains: "padding: 8px 12px"
+      rule: "touch-target-size"
+      fix: "Use var(--space-2) var(--space-3); ensure min-height: 44px"
+    - file: "Button.tsx"
+      line_contains: "aria-label"
+      not_contains: "aria-hidden"
+      rule: "aria-label-on-icon-only"
+      fix: "Icon needs aria-hidden='true', button gets aria-label"
+
+expected_pass:
+  - file: "Button.module.css"
+    contains: "focus-visible"
+  - file: "Button.module.css"
+    contains: "var(--color-"
+  - file: "Button.tsx"
+    contains: "forwardRef"
+
+success_criteria:
+  - critical_violations: 0
+  - major_violations: 0
+  - all_tokens_used: true

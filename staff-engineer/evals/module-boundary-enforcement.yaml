@@ -1,0 +1,65 @@
+name: module-boundary-enforcement
+description: "Verify architecture analyzer detects layer violations and circular dependencies"
+category: architecture
+priority: critical
+
+input:
+  project_structure:
+    - "domain/user/entity.go"
+    - "domain/user/repository.go"       # interface
+    - "application/user/service.go"
+    - "adapters/http/handler.go"
+    - "adapters/db/postgres.go"         # implements domain/user/repository.go
+    - "shared/logger.go"
+
+violations:
+  - file: "domain/user/entity.go"
+    imports: ["adapters/db/postgres"]   # FORBIDDEN: domain -> adapters
+    rule: "layer-violation"
+    severity: "critical"
+    fix: "Domain must not depend on adapters. Use repository interface."
+  - file: "application/user/service.go"
+    imports: ["adapters/http/handler"]  # FORBIDDEN: application -> adapters
+    rule: "layer-violation"
+    severity: "critical"
+    fix: "Application must not depend on adapters. Use dependency inversion."
+  - file: "adapters/db/postgres.go"
+    imports: ["adapters/http/handler"]  # FORBIDDEN: adapter -> adapter (cross)
+    rule: "cross-adapter-coupling"
+    severity: "major"
+    fix: "Adapters should not depend on each other. Share via domain/shared."
+  - file: "domain/user/entity.go"
+    imports: ["domain/user/entity"]     # SELF-CYCLE (via another file)
+    rule: "circular-dependency"
+    severity: "critical"
+    fix: "Break cycle: extract shared types to domain/shared or restructure."
+
+expected_metrics:
+  - cycles_detected: 1
+  - layer_violations: 3
+  - cross_adapter_coupling: 1
+  - instability_index:
+      domain: "< 0.2"          # stable, low-level
+      application: "< 0.4"
+      adapters: "> 0.6"        # unstable, high-level
+      shared: "< 0.1"
+  - distance_from_main_sequence:
+      domain: "< 0.1"
+      adapters: "< 0.1"
+
+mermaid_output_assertions:
+  - "subgraph Domain"
+  - "subgraph Application"
+  - "subgraph Adapters"
+  - "subgraph Shared"
+  - "Domain --> Shared"
+  - "Application --> Domain"
+  - "Application --> Shared"
+  - "Adapters --> Domain"
+  - "Adapters --> Application"
+
+success_criteria:
+  - all_violations_detected: true
+  - metrics_calculated: true
+  - mermaid_diagram_valid: true
+  - layer_rules_enforced: true

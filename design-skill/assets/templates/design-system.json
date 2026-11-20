@@ -1,0 +1,342 @@
+{
+  "$schema": "https://design-tokens.github.io/schema.json",
+  "version": "1.0.0",
+  "name": "Design System",
+  "description": "Complete design token system for cross-platform use",
+  "author": "Design Team",
+  "lastUpdated": "2026-11-20",
+  "tokenSets": ["core", "semantic", "component"],
+  "platforms": ["web", "ios", "android", "flutter", "react-native"],
+
+  "spacing": {
+    "1": { "value": "4px", "type": "dimension", "description": "Base unit (4px)" },
+    "2": { "value": "8px", "type": "dimension", "description": "2× base" },
+    "3": { "value": "12px", "type": "dimension", "description": "3× base" },
+    "4": { "value": "16px", "type": "dimension", "description": "4× base (1rem)" },
+    "5": { "value": "20px", "type": "dimension", "description": "5× base" },
+    "6": { "value": "24px", "type": "dimension", "description": "6× base" },
+    "8": { "value": "32px", "type": "dimension", "description": "8× base" },
+    "10": { "value": "40px", "type": "dimension", "description": "10× base" },
+    "12": { "value": "48px", "type": "dimension", "description": "12× base" },
+    "16": { "value": "64px", "type": "dimension", "description": "16× base" }
+  },
+
+  "color": {
+    "primary": {
+      "value": { "light": "#2563eb", "dark": "#3b82f6" },
+      "hover": { "light": "#1d4ed8", "dark": "#60a5fa" },
+      "active": { "light": "#1e40af", "dark": "#2563eb" },
+      "disabled": { "light": "#93c5fd", "dark": "#1e3a5f" },
+      "type": "color",
+      "description": "Primary brand color"
+    },
+    "secondary": {
+      "value": { "light": "#64748b", "dark": "#94a3b8" },
+      "hover": { "light": "#475569", "dark": "#cbd5e1" },
+      "active": { "light": "#334155", "dark": "#64748b" },
+      "disabled": { "light": "#cbd5e1", "dark": "#475569" },
+      "type": "color",
+      "description": "Secondary brand color"
+    },
+    "surface": {
+      "value": { "light": "#ffffff", "dark": "#0f172a" },
+      "hover": { "light": "#f8fafc", "dark": "#1e293b" },
+      "elevated": { "light": "#ffffff", "dark": "#1e293b" },
+      "overlay": { "light": "rgba(15, 23, 42, 0.8)", "dark": "rgba(0, 0, 0, 0.8)" },
+      "type": "color",
+      "description": "Surface backgrounds"
+    },
+    "border": {
+      "value": { "light": "#e2e8f0", "dark": "#334155" },
+      "strong": { "light": "#cbd5e1", "dark": "#475569" },
+      "focus": { "light": "#2563eb", "dark": "#60a5fa" },
+      "type": "color",
+      "description": "Border colors"
+    },
+    "focusRing": {
+      "value": { "light": "#2563eb", "dark": "#60a5fa" },
+      "offset": { "light": "#ffffff", "dark": "#0f172a" },
+      "type": "color",
+      "description": "Focus ring color (critical for accessibility)"
+    },
+    "text": {
+      "primary": { "light": "#0f172a", "dark": "#f1f5f9" },
+      "secondary": { "light": "#475569", "dark": "#cbd5e1" },
+      "muted": { "light": "#94a3b8", "dark": "#64748b" },
+      "inverse": { "light": "#f8fafc", "dark": "#0f172a" },
+      "link": { "light": "#2563eb", "dark": "#3b82f6" },
+      "linkHover": { "light": "#1d4ed8", "dark": "#60a5fa" },
+      "type": "color",
+      "description": "Text colors"
+    },
+    "error": {
+      "value": { "light": "#dc2626", "dark": "#f87171" },
+      "light": { "light": "#fef2f2", "dark": "#7f1d1d" },
+      "text": { "light": "#b91c1c", "dark": "#fecaca" },
+      "border": { "light": "#fecaca", "dark": "#991b1b" },
+      "type": "color",
+      "description": "Error/destructive states"
+    },
+    "success": {
+      "value": { "light": "#16a34a", "dark": "#4ade80" },
+      "light": { "light": "#f0fdf4", "dark": "#14532d" },
+      "text": { "light": "#15803d", "dark": "#bbf7d0" },
+      "border": { "light": "#bbf7d0", "dark": "#166534" },
+      "type": "color",
+      "description": "Success states"
+    },
+    "warning": {
+      "value": { "light": "#ca8a04", "dark": "#facc15" },
+      "light": { "light": "#fefce8", "dark": "#713f12" },
+      "text": { "light": "#a16207", "dark": "#fef08a" },
+      "border": { "light": "#fef08a", "dark": "#854d0e" },
+      "type": "color",
+      "description": "Warning states"
+    },
+    "info": {
+      "value": { "light": "#0284c7", "dark": "#38bdf8" },
+      "light": { "light": "#eff6ff", "dark": "#1e3a5f" },
+      "text": { "light": "#0165a3", "dark": "#bae6fd" },
+      "border": { "light": "#bae6fd", "dark": "#1e429f" },
+      "type": "color",
+      "description": "Informational states"
+    },
+    "disabled": {
+      "bg": { "light": "#f1f5f9", "dark": "#1e293b" },
+      "text": { "light": "#94a3b8", "dark": "#64748b" },
+      "border": { "light": "#e2e8f0", "dark": "#334155" },
+      "type": "color",
+      "description": "Disabled states"
+    }
+  },
+
+  "typography": {
+    "fontFamily": {
+      "sans": {
+        "value": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "type": "fontFamily",
+        "description": "Primary sans-serif font stack"
+      },
+      "mono": {
+        "value": "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
+        "type": "fontFamily",
+        "description": "Monospace font stack"
+      }
+    },
+    "fontSize": {
+      "xs": { "value": "0.75rem", "type": "fontSize", "description": "12px - Captions" },
+      "sm": { "value": "0.875rem", "type": "fontSize", "description": "14px - Small body" },
+      "md": { "value": "1rem", "type": "fontSize", "description": "16px - Base body" },
+      "lg": { "value": "1.125rem", "type": "fontSize", "description": "18px - Large body" },
+      "xl": { "value": "1.25rem", "type": "fontSize", "description": "20px - Small heading" },
+      "2xl": { "value": "1.5rem", "type": "fontSize", "description": "24px - Heading 5" },
+      "3xl": { "value": "1.875rem", "type": "fontSize", "description": "30px - Heading 4" },
+      "4xl": { "value": "2.25rem", "type": "fontSize", "description": "36px - Heading 3" },
+      "5xl": { "value": "3rem", "type": "fontSize", "description": "48px - Heading 2" },
+      "6xl": { "value": "3.75rem", "type": "fontSize", "description": "60px - Heading 1" }
+    },
+    "fontWeight": {
+      "normal": { "value": 400, "type": "fontWeight", "description": "Regular" },
+      "medium": { "value": 500, "type": "fontWeight", "description": "Medium" },
+      "semibold": { "value": 600, "type": "fontWeight", "description": "Semibold" },
+      "bold": { "value": 700, "type": "fontWeight", "description": "Bold" }
+    },
+    "lineHeight": {
+      "tight": { "value": 1.25, "type": "lineHeight", "description": "Headings" },
+      "snug": { "value": 1.375, "type": "lineHeight", "description": "Subheadings" },
+      "normal": { "value": 1.5, "type": "lineHeight", "description": "Body text" },
+      "relaxed": { "value": 1.625, "type": "lineHeight", "description": "Loose body" },
+      "loose": { "value": 1.75, "type": "lineHeight", "description": "Very loose" }
+    },
+    "letterSpacing": {
+      "tight": { "value": "-0.02em", "type": "dimension", "description": "Headings" },
+      "normal": { "value": "0", "type": "dimension", "description": "Body text" },
+      "wide": { "value": "0.02em", "type": "dimension", "description": "Buttons, labels" },
+      "wider": { "value": "0.04em", "type": "dimension", "description": "Uppercase" },
+      "widest": { "value": "0.1em", "type": "dimension", "description": "Tracking heavy" }
+    }
+  },
+
+  "borderRadius": {
+    "none": { "value": "0", "type": "dimension", "description": "No radius" },
+    "sm": { "value": "4px", "type": "dimension", "description": "Small elements (badges)" },
+    "md": { "value": "6px", "type": "dimension", "description": "Buttons, inputs" },
+    "lg": { "value": "8px", "type": "dimension", "description": "Cards, modals" },
+    "xl": { "value": "12px", "type": "dimension", "description": "Large containers" },
+    "2xl": { "value": "16px", "type": "dimension", "description": "Extra large" },
+    "full": { "value": "9999px", "type": "dimension", "description": "Fully rounded (pills, avatars)" }
+  },
+
+  "shadow": {
+    "none": { "value": "none", "type": "shadow", "description": "No shadow" },
+    "xs": { "value": "0 1px 1px 0 rgb(0 0 0 / 0.04)", "type": "shadow", "description": "Subtle" },
+    "sm": { "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "type": "shadow", "description": "Buttons, cards" },
+    "md": { "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", "type": "shadow", "description": "Elevated cards" },
+    "lg": { "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "type": "shadow", "description": "Modals, dropdowns" },
+    "xl": { "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", "type": "shadow", "description": "High elevation" },
+    "2xl": { "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)", "type": "shadow", "description": "Maximum elevation" },
+    "inner": { "value": "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)", "type": "shadow", "description": "Inset (inputs)" }
+  },
+
+  "breakpoints": {
+    "xs": { "value": "480px", "type": "dimension", "description": "Extra small phones" },
+    "sm": { "value": "640px", "type": "dimension", "description": "Small tablets / large phones" },
+    "md": { "value": "768px", "type": "dimension", "description": "Tablets" },
+    "lg": { "value": "1024px", "type": "dimension", "description": "Small laptops" },
+    "xl": { "value": "1280px", "type": "dimension", "description": "Desktops" },
+    "2xl": { "value": "1536px", "type": "dimension", "description": "Large desktops" }
+  },
+
+  "zIndex": {
+    "dropdown": { "value": 100, "type": "number", "description": "Dropdown menus" },
+    "sticky": { "value": 200, "type": "number", "description": "Sticky headers" },
+    "fixed": { "value": 300, "type": "number", "description": "Fixed headers/footers" },
+    "modalBackdrop": { "value": 400, "type": "number", "description": "Modal backdrops" },
+    "modal": { "value": 500, "type": "number", "description": "Modal dialogs" },
+    "popover": { "value": 600, "type": "number", "description": "Popovers" },
+    "tooltip": { "value": 700, "type": "number", "description": "Tooltips" },
+    "toast": { "value": 800, "type": "number", "description": "Toasts/notifications" }
+  },
+
+  "transition": {
+    "fast": { "value": "100ms ease", "type": "transition", "description": "Micro-interactions" },
+    "normal": { "value": "200ms ease", "type": "transition", "description": "Standard transitions" },
+    "slow": { "value": "300ms ease", "type": "transition", "description": "Complex animations" },
+    "slower": { "value": "500ms ease", "type": "transition", "description": "Page transitions" }
+  },
+
+  "semanticAliases": {
+    "spacing": {
+      "xs": "{spacing.1}",
+      "sm": "{spacing.2}",
+      "md": "{spacing.4}",
+      "lg": "{spacing.6}",
+      "xl": "{spacing.8}",
+      "2xl": "{spacing.12}",
+      "3xl": "{spacing.16}"
+    },
+    "color": {
+      "primaryBg": "{color.primary.value}",
+      "primaryText": "{color.text.inverse}",
+      "surfaceBg": "{color.surface.value}",
+      "surfaceText": "{color.text.primary}",
+      "borderDefault": "{color.border.value}",
+      "focusRing": "{color.focusRing.value}"
+    },
+    "typography": {
+      "body": "{typography.fontSize.md}",
+      "bodySm": "{typography.fontSize.sm}",
+      "heading1": "{typography.fontSize.5xl}",
+      "heading2": "{typography.fontSize.4xl}",
+      "heading3": "{typography.fontSize.3xl}",
+      "heading4": "{typography.fontSize.2xl}",
+      "heading5": "{typography.fontSize.xl}",
+      "heading6": "{typography.fontSize.lg}"
+    },
+    "borderRadius": {
+      "button": "{borderRadius.md}",
+      "input": "{borderRadius.md}",
+      "card": "{borderRadius.lg}",
+      "modal": "{borderRadius.xl}",
+      "badge": "{borderRadius.full}"
+    },
+    "shadow": {
+      "card": "{shadow.md}",
+      "dropdown": "{shadow.lg}",
+      "modal": "{shadow.xl}",
+      "toast": "{shadow.lg}"
+    }
+  },
+
+  "componentTokens": {
+    "button": {
+      "paddingVertical": "{spacing.2}",
+      "paddingHorizontal": "{spacing.4}",
+      "fontSize": "{typography.fontSize.sm}",
+      "fontWeight": "{typography.fontWeight.medium}",
+      "borderRadius": "{borderRadius.md}",
+      "minHeight": "44px",
+      "transition": "{transition.fast}"
+    },
+    "input": {
+      "paddingVertical": "{spacing.2}",
+      "paddingHorizontal": "{spacing.3}",
+      "fontSize": "{typography.fontSize.md}",
+      "borderRadius": "{borderRadius.md}",
+      "borderWidth": "1px",
+      "transition": "{transition.fast}"
+    },
+    "card": {
+      "padding": "{spacing.4}",
+      "borderRadius": "{borderRadius.lg}",
+      "shadow": "{shadow.md}",
+      "borderWidth": "1px"
+    },
+    "badge": {
+      "paddingVertical": "{spacing.1}",
+      "paddingHorizontal": "{spacing.2}",
+      "fontSize": "{typography.fontSize.xs}",
+      "fontWeight": "{typography.fontWeight.semibold}",
+      "borderRadius": "{borderRadius.full}"
+    }
+  },
+
+  "platformOverrides": {
+    "ios": {
+      "color": {
+        "primary": { "light": "#007AFF", "dark": "#0A84FF" },
+        "surface": { "light": "#FFFFFF", "dark": "#000000" },
+        "textPrimary": { "light": "#000000", "dark": "#FFFFFF" }
+      },
+      "spacing": {
+        "baseUnit": 4,
+        "touchTarget": 44
+      },
+      "borderRadius": {
+        "button": 8
+      },
+      "safeArea": {
+        "top": "env(safe-area-inset-top)",
+        "bottom": "env(safe-area-inset-bottom)",
+        "left": "env(safe-area-inset-left)",
+        "right": "env(safe-area-inset-right)"
+      }
+    },
+    "android": {
+      "color": {
+        "primary": { "light": "#6750A4", "dark": "#D0BCFF" },
+        "surface": { "light": "#FFFBFE", "dark": "#1C1B1F" },
+        "textPrimary": { "light": "#1C1B1F", "dark": "#E6E1E5" }
+      },
+      "spacing": {
+        "baseUnit": 4,
+        "touchTarget": 48
+      },
+      "borderRadius": {
+        "button": 12
+      }
+    },
+    "flutter": {
+      "color": {
+        "primary": { "light": 0xFF2563EB, "dark": 0xFF3B82F6 },
+        "surface": { "light": 0xFFFFFFFF, "dark": 0xFF0F172A },
+        "textPrimary": { "light": 0xFF0F172A, "dark": 0xFFF1F5F9 }
+      },
+      "spacing": {
+        "baseUnit": 4,
+        "touchTarget": 48
+      }
+    },
+    "reactNative": {
+      "color": {
+        "primary": { "light": "#2563EB", "dark": "#3B82F6" },
+        "surface": { "light": "#FFFFFF", "dark": "#0F172A" },
+        "textPrimary": { "light": "#0F172A", "dark": "#F1F5F9" }
+      },
+      "spacing": {
+        "baseUnit": 4,
+        "touchTarget": 44
+      }
+    }
+  }
+}
