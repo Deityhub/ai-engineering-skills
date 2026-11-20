@@ -93,20 +93,33 @@ Part of ADR-047
 
 ## PR Workflow
 
-### PR Lifecycle
+### PR Lifecycle (with Mandatory Human Approval Gates)
 ```
 1. Create feature branch
-2. Develop with incremental commits
-3. Push branch → CI runs validation gates
-4. Create PR with template
-5. Automated validation gates run
-6. Code review (2 approvals required)
-6. Consensus check (if multi-skill)
-7. Human approval (for production)
-8. Auto-merge on consensus + approvals
-9. Tag release
-10. Deploy
+2. Agent execution (parallel, validated)
+3. ⏸️ HUMAN GATE 1: Review all changes before commit
+4. Commit changes (only after human approval)
+5. ⏸️ HUMAN GATE 2: Review PR before creation
+6. Create PR with template (only after human approval)
+7. Push branch → CI runs validation gates
+8. Automated validation gates run
+9. Code review (2 approvals required)
+10. Consensus check (if multi-skill)
+11. ⏸️ HUMAN GATE 3: Approve production deployment
+12. Auto-merge on consensus + approvals
+13. Tag release
+14. Deploy
 ```
+
+### Mandatory Human Approval Gates
+
+| Gate | When | What Human Reviews | Required |
+|------|------|-------------------|----------|
+| **Gate 1: Review Changes** | Before `git commit` | All agent outputs, validation results, file diffs | ✅ Required |
+| **Gate 2: Review PR** | Before `gh pr create` | PR title, body, validation gates, consensus | ✅ Required |
+| **Gate 3: Approve Deploy** | Before production deploy | Version, PR, consensus, deployment plan | ✅ Required |
+
+**No commit, PR, or deployment proceeds without explicit human approval.**
 
 ### PR Template (Auto-generated)
 ```markdown

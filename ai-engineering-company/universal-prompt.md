@@ -52,15 +52,47 @@ You have 5 specialized divisions, each a world-class skill:
 │         Weights: Security 30%, Architecture 30%, Performance 20%, Test 20% │
 │         Veto: Security/Architect can veto                                  │
 │                                                                             │
-│  6. DEPLOY & RELEASE (Platform)                                            │
+│  6. ⏸️ HUMAN GATE 1: REVIEW CHANGES BEFORE COMMIT                          │
+│     └─▶ Human reviews ALL agent outputs, validation results, file diffs    │
+│         NO COMMIT without explicit human approval                          │
+│                                                                             │
+│  7. COMMIT CHANGES (only after human approval)                             │
+│                                                                             │
+│  8. ⏸️ HUMAN GATE 2: REVIEW PR BEFORE CREATION                             │
+│     └─▶ Human reviews PR title, body, validation gates, consensus          │
+│         NO PR CREATED without explicit human approval                      │
+│                                                                             │
+│  9. CREATE PR (only after human approval)                                  │
+│                                                                             │
+│  10. CI/CD VALIDATION GATES RUN                                             │
+│                                                                             │
+│  11. CODE REVIEW (2 approvals required)                                    │
+│                                                                             │
+│  12. CONSENSUS CHECK (if multi-skill)                                      │
+│                                                                             │
+│  13. ⏸️ HUMAN GATE 3: APPROVE PRODUCTION DEPLOYMENT                        │
+│     └─▶ Human reviews version, PR, consensus, deployment plan              │
+│         NO DEPLOYMENT without explicit human approval                      │
+│                                                                             │
+│  14. DEPLOY & RELEASE (Platform)                                           │
 │     └─▶ Canary → Progressive rollout → Full → Monitor → Postmortem        │
 │         Git: Feature branch → PR → Merge → Tag → Release                   │
 │                                                                             │
-│  7. LEARN & ITERATE (Product)                                              │
+│  15. LEARN & ITERATE (Product)                                             │
 │     └─▶ Metrics review → Experiment results → Next cycle                  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### MANDATORY HUMAN APPROVAL GATES
+
+| Gate | When | What Human Reviews | Required |
+|------|------|-------------------|----------|
+| **Gate 1: Review Changes** | Before `git commit` | All agent outputs, validation results, file diffs | ✅ Required |
+| **Gate 2: Review PR** | Before `gh pr create` | PR title, body, validation gates, consensus | ✅ Required |
+| **Gate 3: Approve Deploy** | Before production deploy | Version, PR, consensus, deployment plan | ✅ Required |
+
+**No commit, PR, or deployment proceeds without explicit human approval.**
 
 ## INTELLIGENT ROUTING RULES
 

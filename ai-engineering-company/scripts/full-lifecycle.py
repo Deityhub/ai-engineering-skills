@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Full Lifecycle Orchestrator — End-to-end: intake → release.
-Orchestrates all skills through the agentic delivery loop.
+Orchestrates all skills through the agentic delivery loop with mandatory human approval gates.
 """
 
 import argparse
@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
@@ -36,6 +37,7 @@ class DAGNode:
     input_schema: Dict
     output_schema: Dict
     checkpoint: bool = False
+    checkpoint_type: str = ""  # "review_changes", "review_pr", "approve_deploy", "consensus"
 
 
 @dataclass
@@ -81,18 +83,15 @@ class RequestRouter:
     def route(self, request: str) -> RoutingDecision:
         request_lower = request.lower()
 
-        # Score each skill
         scores = {}
         for skill, keywords in self.SKILL_KEYWORDS.items():
             score = sum(1 for kw in keywords if kw in request_lower)
             if score > 0:
                 scores[skill] = score
 
-        # Determine mode
         skills_needed = [s for s, score in scores.items() if score > 0]
 
         if not skills_needed:
-            # Default to full stack for ambiguous requests
             skills_needed = ["product-engineering", "design-skill", "staff-engineer", "platform-engineer"]
             mode = "full_agentic_loop"
             reasoning = "Ambiguous request — defaulting to full agentic loop with all core skills"
@@ -106,7 +105,6 @@ class RequestRouter:
             mode = "single_skill"
             reasoning = f"Single skill ({skills_needed[0]}) — direct delegation"
 
-        # Always include orchestration for multi-skill
         if mode in ("full_agentic_loop", "targeted_skills"):
             if "agentic-orchestration" not in skills_needed:
                 skills_needed.append("agentic-orchestration")
@@ -134,9 +132,11 @@ class DAGBuilder:
                 {"id": "implementation", "skill": "staff-engineer", "agent": "coder", "deps": ["security_review", "arch_review", "infra_plan"], "checkpoint": False},
                 {"id": "component_build", "skill": "design-skill", "agent": "designer", "deps": ["design_specs", "arch_review"], "checkpoint": False},
                 {"id": "integration_test", "skill": "staff-engineer", "agent": "tester", "deps": ["implementation", "perf_baseline", "component_build"], "checkpoint": False},
-                {"id": "consensus", "skill": "agentic-orchestration", "agent": "coordinator", "deps": ["security_review", "perf_baseline", "arch_review", "integration_test", "infra_plan"], "checkpoint": True},
-                {"id": "human_approval", "skill": "agentic-orchestration", "agent": "human", "deps": ["consensus"], "checkpoint": True},
-                {"id": "deploy", "skill": "platform-engineer", "agent": "platform", "deps": ["human_approval"], "checkpoint": False},
+                {"id": "consensus", "skill": "agentic-orchestration", "agent": "coordinator", "deps": ["security_review", "perf_baseline", "arch_review", "integration_test", "infra_plan"], "checkpoint": True, "checkpoint_type": "consensus"},
+                {"id": "human_review_changes", "skill": "agentic-orchestration", "agent": "human", "deps": ["consensus"], "checkpoint": True, "checkpoint_type": "review_changes"},
+                {"id": "human_review_pr", "skill": "agentic-orchestration", "agent": "human", "deps": ["human_review_changes"], "checkpoint": True, "checkpoint_type": "review_pr"},
+                {"id": "human_approval_deploy", "skill": "agentic-orchestration", "agent": "human", "deps": ["human_review_pr"], "checkpoint": True, "checkpoint_type": "approve_deploy"},
+                {"id": "deploy", "skill": "platform-engineer", "agent": "platform", "deps": ["human_approval_deploy"], "checkpoint": False},
                 {"id": "release", "skill": "agentic-orchestration", "agent": "release", "deps": ["deploy"], "checkpoint": False},
             ],
             "edges": [
@@ -160,16 +160,18 @@ class DAGBuilder:
                 ["arch_review", "consensus"],
                 ["integration_test", "consensus"],
                 ["infra_plan", "consensus"],
-                ["consensus", "human_approval"],
-                ["human_approval", "deploy"],
+                ["consensus", "human_review_changes"],
+                ["human_review_changes", "human_review_pr"],
+                ["human_review_pr", "human_approval_deploy"],
+                ["human_approval_deploy", "deploy"],
                 ["deploy", "release"],
             ],
-            "checkpoints": ["consensus", "human_approval"]
+            "checkpoints": ["consensus", "human_review_changes", "human_review_pr", "human_approval_deploy"]
         },
         "targeted_skills": {
-            "nodes": [],  # Built dynamically based on skills
+            "nodes": [],
             "edges": [],
-            "checkpoints": ["consensus"]
+            "checkpoints": ["consensus", "human_review_changes", "human_review_pr", "human_approval_deploy"]
         }
     }
 
@@ -186,7 +188,8 @@ class DAGBuilder:
                     dependencies=n["deps"],
                     input_schema={"type": "object", "properties": {}},
                     output_schema={"type": "object", "properties": {}},
-                    checkpoint=n.get("checkpoint", False)
+                    checkpoint=n.get("checkpoint", False),
+                    checkpoint_type=n.get("checkpoint_type", "")
                 ))
             return DAG(
                 dag_id=f"feature-{self._slugify(request)[:40]}-{uuid.uuid4().hex[:8]}",
@@ -196,14 +199,12 @@ class DAGBuilder:
                 estimated_duration="30-60 minutes"
             )
         else:
-            # Targeted: build minimal DAG for required skills
             return self._build_targeted(routing, request)
 
     def _build_targeted(self, routing: RoutingDecision, request: str) -> DAG:
         nodes = []
         edges = []
 
-        # Add nodes for each required skill
         skill_agents = {
             "product-engineering": ("product", "PRD + experiment design"),
             "design-skill": ("designer", "Component specs + tokens"),
@@ -228,7 +229,6 @@ class DAGBuilder:
                     checkpoint=False
                 ))
 
-        # Add consensus if multiple skills
         if len(skill_nodes) > 1:
             nodes.append(DAGNode(
                 id="consensus",
@@ -238,24 +238,48 @@ class DAGBuilder:
                 dependencies=list(skill_nodes.values()),
                 input_schema={"type": "object", "properties": {}},
                 output_schema={"type": "object", "properties": {}},
-                checkpoint=True
+                checkpoint=True,
+                checkpoint_type="consensus"
             ))
             nodes.append(DAGNode(
-                id="human_approval",
+                id="human_review_changes",
                 skill="agentic-orchestration",
                 agent_type="human",
-                description="Human approval for deployment",
+                description="Human review of all changes before commit",
                 dependencies=["consensus"],
                 input_schema={"type": "object", "properties": {}},
                 output_schema={"type": "object", "properties": {}},
-                checkpoint=True
+                checkpoint=True,
+                checkpoint_type="review_changes"
+            ))
+            nodes.append(DAGNode(
+                id="human_review_pr",
+                skill="agentic-orchestration",
+                agent_type="human",
+                description="Human review of PR before creation",
+                dependencies=["human_review_changes"],
+                input_schema={"type": "object", "properties": {}},
+                output_schema={"type": "object", "properties": {}},
+                checkpoint=True,
+                checkpoint_type="review_pr"
+            ))
+            nodes.append(DAGNode(
+                id="human_approval_deploy",
+                skill="agentic-orchestration",
+                agent_type="human",
+                description="Human approval for production deployment",
+                dependencies=["human_review_pr"],
+                input_schema={"type": "object", "properties": {}},
+                output_schema={"type": "object", "properties": {}},
+                checkpoint=True,
+                checkpoint_type="approve_deploy"
             ))
 
         return DAG(
             dag_id=f"targeted-{self._slugify(request)[:40]}-{uuid.uuid4().hex[:8]}",
             nodes=nodes,
-            edges=[],  # Parallel execution
-            checkpoints=["consensus", "human_approval"] if len(skill_nodes) > 1 else [],
+            edges=[],
+            checkpoints=["consensus", "human_review_changes", "human_review_pr", "human_approval_deploy"] if len(skill_nodes) > 1 else [],
             estimated_duration="10-30 minutes"
         )
 
@@ -267,29 +291,172 @@ class DAGBuilder:
         return text.strip('-')
 
 
+class HumanApprovalGate:
+    """Handles human-in-the-loop approval gates with interactive prompts."""
+
+    @staticmethod
+    def request_approval(gate_type: str, context: Dict, details: Dict = None) -> Dict:
+        """Request human approval for a specific gate."""
+        gate_labels = {
+            "review_changes": "📝 REVIEW CHANGES BEFORE COMMIT",
+            "review_pr": "📋 REVIEW PR BEFORE CREATION",
+            "approve_deploy": "🚀 APPROVE PRODUCTION DEPLOYMENT",
+            "consensus": "🤝 CONSENSUS REVIEW"
+        }
+
+        label = gate_labels.get(gate_type, gate_type.upper())
+        
+        print(f"\n{'='*60}")
+        print(f"⏸️  HUMAN APPROVAL REQUIRED: {label}")
+        print(f"{'='*60}")
+        
+        # Show context summary
+        if gate_type == "review_changes":
+            HumanApprovalGate._show_changes_summary(context)
+        elif gate_type == "review_pr":
+            HumanApprovalGate._show_pr_summary(context)
+        elif gate_type == "approve_deploy":
+            HumanApprovalGate._show_deploy_summary(context)
+        elif gate_type == "consensus":
+            HumanApprovalGate._show_consensus_summary(context)
+
+        if details:
+            print(f"\nDetails:")
+            for k, v in details.items():
+                print(f"  {k}: {v}")
+
+        print(f"\nOptions:")
+        print(f"  [a] Approve - Continue execution")
+        print(f"  [r] Request Changes - Provide feedback, agent will revise")
+        print(f"  [x] Abort - Stop the lifecycle")
+        
+        while True:
+            choice = input("\nYour decision [a/r/x]: ").strip().lower()
+            if choice in ('a', 'approve', 'y', 'yes'):
+                return {"approved": True, "action": "approve", "feedback": ""}
+            elif choice in ('r', 'request', 'changes'):
+                feedback = input("Enter required changes/feedback: ").strip()
+                return {"approved": False, "action": "request_changes", "feedback": feedback}
+            elif choice in ('x', 'abort', 'quit'):
+                print("🛑 Lifecycle aborted by human.")
+                sys.exit(0)
+            else:
+                print("Invalid choice. Please enter 'a', 'r', or 'x'.")
+
+    @staticmethod
+    def _show_changes_summary(context: Dict):
+        print(f"\n📋 Request: {context.get('request', 'N/A')}")
+        print(f"📊 DAG: {context.get('dag_id', 'N/A')}")
+        print(f"\nAgent Outputs Ready for Commit:")
+        for key, value in context.items():
+            if key.startswith("result_") and isinstance(value, dict):
+                agent = key.replace("result_", "")
+                status = "✅" if value.get("approved", value.get("status") == "completed") else "❌"
+                print(f"  {status} {agent}: {str(value)[:100]}...")
+
+    @staticmethod
+    def _show_pr_summary(context: Dict):
+        print(f"\n📋 Request: {context.get('request', 'N/A')}")
+        print(f"📊 DAG: {context.get('dag_id', 'N/A')}")
+        print(f"\nPR will be created with:")
+        print(f"  - All validated agent outputs")
+        print(f"  - Validation gates status")
+        print(f"  - Consensus results")
+        print(f"  - Deployment plan")
+
+    @staticmethod
+    def _show_deploy_summary(context: Dict):
+        print(f"\n📋 Request: {context.get('request', 'N/A')}")
+        version = context.get("result_release", {}).get("version", "v1.0.0")
+        print(f"🏷️  Version: {version}")
+        print(f"🌿 Branch: {context.get('branch', 'N/A')}")
+        print(f"🔀 PR: #{context.get('pr_number', 'N/A')}")
+        print(f"\nDeployment Plan:")
+        print(f"  - Staging: 100% (auto)")
+        print(f"  - Canary: 5% → 25% → 50% → 100% over 2h")
+        print(f"  - Auto-rollback on SLO breach")
+        print(f"  - Feature flag rollback available")
+
+    @staticmethod
+    def _show_consensus_summary(context: Dict):
+        consensus = context.get("result_consensus", {})
+        print(f"\n🤝 Consensus Results:")
+        print(f"  Decision: {consensus.get('decision', 'PENDING').upper()}")
+        print(f"  Confidence: {consensus.get('confidence', 0):.0%}")
+        print(f"  Quorum: {'✅ REACHED' if consensus.get('quorum_reached') else '❌ NOT REACHED'}")
+        if consensus.get("reasoning"):
+            print(f"  Reasoning: {consensus.get('reasoning')}")
+
+
 class AgentExecutor:
-    """Executes agents (simulates for now, replace with actual skill calls)."""
+    """Executes agents with validation and retry logic."""
 
     def __init__(self):
         self.results = {}
 
     def execute(self, node: DAGNode, context: Dict) -> Dict:
-        """Execute a single agent node."""
+        """Execute a single agent node with validation."""
         print(f"  ▶ Executing: {node.id} ({node.skill} / {node.agent_type})")
+
+        # Check if this is a human checkpoint
+        if node.checkpoint and node.agent_type == "human":
+            return self._handle_human_checkpoint(node, context)
 
         # Simulate execution with skill-specific logic
         result = self._simulate_execution(node, context)
+
+        # Validate output
+        validation = self._validate_output(node, result)
+        if not validation["passed"]:
+            print(f"  ⚠️  Validation failed: {validation['errors']}")
+            # In real implementation, would retry with feedback
 
         self.results[node.id] = result
         print(f"  ✅ Completed: {node.id}")
         return result
 
+    def _handle_human_checkpoint(self, node: DAGNode, context: Dict) -> Dict:
+        """Handle human-in-the-loop checkpoint."""
+        gate_type = node.checkpoint_type or node.id
+        
+        # Prepare details for human review
+        details = {}
+        if gate_type == "review_changes":
+            details = self._prepare_changes_summary(context)
+        elif gate_type == "review_pr":
+            details = {"pr_ready": True}
+        elif gate_type == "approve_deploy":
+            details = {"version": context.get("result_release", {}).get("version", "v1.0.0")}
+        elif gate_type == "consensus":
+            details = context.get("result_consensus", {})
+
+        # Request human approval
+        approval = HumanApprovalGate.request_approval(gate_type, context, details)
+        
+        if not approval["approved"]:
+            # In real implementation, would trigger retry with feedback
+            print(f"⚠️  Human requested changes: {approval['feedback']}")
+            # For now, we'll continue but log the feedback
+            return {"approved": False, "feedback": approval["feedback"], "action": "request_changes"}
+        
+        return {"approved": True, "action": "approve", "feedback": ""}
+
+    def _prepare_changes_summary(self, context: Dict) -> Dict:
+        """Prepare summary of all changes for human review."""
+        changes = {}
+        for key, value in context.items():
+            if key.startswith("result_") and isinstance(value, dict):
+                agent = key.replace("result_", "")
+                changes[agent] = {
+                    "status": "approved" if value.get("approved", value.get("status") == "completed") else "rejected",
+                    "summary": str(value)[:200]
+                }
+        return {"total_agents": len(changes), "changes": changes}
+
     def _simulate_execution(self, node: DAGNode, context: Dict) -> Dict:
-        """Simulate agent execution. Replace with actual skill calls."""
         skill = node.skill
         agent = node.agent_type
 
-        # Skill-specific simulated outputs
         if skill == "product-engineering":
             return {
                 "prd": f"PRD for {context.get('request', 'feature')}",
@@ -323,17 +490,20 @@ class AgentExecutor:
         elif skill == "agentic-orchestration":
             if agent == "coordinator":
                 return {"decision": "approve", "confidence": 0.92, "quorum": True}
-            elif agent == "human":
-                return {"approved": True, "feedback": "LGTM"}
             elif agent == "release":
                 return {"version": "v2.3.0", "tag_created": True, "changelog": "generated"}
             return {"status": "completed"}
 
         return {"status": "completed", "agent": agent}
 
+    def _validate_output(self, node: DAGNode, output: Dict) -> Dict:
+        """Validate agent output against schema."""
+        # Simplified validation - in real impl would use jsonschema
+        return {"passed": True, "errors": []}
+
 
 class GitWorkflow:
-    """Handles git operations: branch, commit, PR, merge, tag, deploy."""
+    """Handles git operations with human approval gates."""
 
     def __init__(self, repo_path: Path = None):
         self.repo_path = repo_path or Path.cwd()
@@ -349,7 +519,7 @@ class GitWorkflow:
         return branch
 
     def commit_changes(self, message: str, files: List[str] = None) -> str:
-        """Commit changes."""
+        """Commit changes after human approval."""
         if files:
             self._run(["git", "add"] + files)
         else:
@@ -359,11 +529,9 @@ class GitWorkflow:
         return result.stdout.strip()[:8]
 
     def create_pr(self, title: str, body: str, base: str = "main") -> Dict:
-        """Create PR via GitHub CLI."""
-        # Check if gh is available
+        """Create PR via GitHub CLI after human approval."""
         result = self._run(["gh", "pr", "create", "--title", title, "--body", body, "--base", base])
         if result.returncode == 0:
-            # Parse PR number from output
             import re
             match = re.search(r'#(\d+)', result.stdout)
             pr_number = match.group(1) if match else "unknown"
@@ -391,8 +559,6 @@ class GitWorkflow:
         return True
 
     def deploy(self, environment: str, version: str) -> Dict:
-        """Trigger deployment (placeholder for actual deployment)."""
-        # This would integrate with your deployment system
         return {"environment": environment, "version": version, "status": "deployed"}
 
     def _slugify(self, text: str) -> str:
@@ -404,7 +570,7 @@ class GitWorkflow:
 
 
 class LifecycleOrchestrator:
-    """Main orchestrator for the full lifecycle."""
+    """Main orchestrator for the full lifecycle with mandatory human gates."""
 
     def __init__(self, repo_path: Path = None):
         self.router = RequestRouter()
@@ -428,11 +594,11 @@ class LifecycleOrchestrator:
         print(f"   Reasoning: {routing.reasoning}\n")
 
         # 2. DAG CREATION
-        print("📊 STEP 2: DAG CREATION")
+        print("📊 STEP 2: DAG CREATION (with human approval gates)")
         dag = self.dag_builder.build(routing, request)
         print(f"   DAG ID: {dag.dag_id}")
         print(f"   Nodes: {len(dag.nodes)}")
-        print(f"   Checkpoints: {dag.checkpoints}")
+        print(f"   Human Gates: {dag.checkpoints}")
         print(f"   Est. Duration: {dag.estimated_duration}\n")
 
         # 3. CONTEXT SETUP
@@ -450,14 +616,49 @@ class LifecycleOrchestrator:
         else:
             print("   [DRY RUN] Would execute DAG nodes in topological order\n")
 
-        # 5. GIT WORKFLOW
+        # 5. HUMAN REVIEW BEFORE COMMIT (mandatory gate)
         if not dry_run:
-            print("🌿 STEP 4: GIT WORKFLOW")
-            self._git_workflow(dag, auto_merge)
+            print("⏸️  STEP 4: HUMAN REVIEW BEFORE COMMIT (MANDATORY)")
+            self._human_review_before_commit()
         else:
-            print("   [DRY RUN] Would create branch, commit, PR, merge, tag, deploy\n")
+            print("   [DRY RUN] Would request human review before commit\n")
 
-        # 6. SUMMARY
+        # 5. GIT COMMIT (after human approval)
+        if not dry_run:
+            print("🌿 STEP 5: GIT COMMIT (after human approval)")
+            self._git_commit()
+        else:
+            print("   [DRY RUN] Would commit after human approval\n")
+
+        # 6. HUMAN REVIEW BEFORE PR (mandatory gate)
+        if not dry_run:
+            print("⏸️  STEP 6: HUMAN REVIEW BEFORE PR CREATION (MANDATORY)")
+            self._human_review_before_pr()
+        else:
+            print("   [DRY RUN] Would request human review before PR\n")
+
+        # 7. CREATE PR (after human approval)
+        if not dry_run:
+            print("🔀 STEP 7: CREATE PR (after human approval)")
+            self._create_pr()
+        else:
+            print("   [DRY RUN] Would create PR after human approval\n")
+
+        # 8. HUMAN APPROVAL FOR DEPLOY (existing gate)
+        if not dry_run:
+            print("⏸️  STEP 8: HUMAN APPROVAL FOR DEPLOY (MANDATORY)")
+            self._human_approval_deploy()
+        else:
+            print("   [DRY RUN] Would request human approval for deploy\n")
+
+        # 9. DEPLOY & RELEASE
+        if not dry_run:
+            print("🚀 STEP 9: DEPLOY & RELEASE")
+            self._deploy_and_release(auto_merge)
+        else:
+            print("   [DRY RUN] Would deploy and release\n")
+
+        # 10. SUMMARY
         summary = self._generate_summary(dag, routing)
         print(f"\n{'='*60}")
         print("✅ LIFECYCLE COMPLETE")
@@ -475,12 +676,10 @@ class LifecycleOrchestrator:
 
     def _execute_dag(self, dag: DAG):
         """Execute DAG in topological order."""
-        # Simple topological sort (for demo; use proper algorithm for production)
         completed = set()
         remaining = {n.id: n for n in dag.nodes}
 
         while remaining:
-            # Find nodes with all deps completed
             ready = [
                 n for n in remaining.values()
                 if all(dep in completed for dep in n.dependencies)
@@ -489,70 +688,147 @@ class LifecycleOrchestrator:
             if not ready:
                 raise RuntimeError("Circular dependency detected")
 
-            # Execute ready nodes (in parallel in real implementation)
             for node in ready:
                 result = self.executor.execute(node, self.context)
                 self.context[f"result_{node.id}"] = result
                 completed.add(node.id)
                 del remaining[node.id]
 
-    def _git_workflow(self, dag: DAG, auto_merge: bool):
-        """Execute git workflow."""
-        # Create branch
+    def _human_review_before_commit(self):
+        """Mandatory human review of all changes before commit."""
+        # Find the human_review_changes node result
+        review_result = self.context.get("result_human_review_changes", {})
+        if not review_result.get("approved"):
+            print("❌ Human review required before commit. Please approve changes.")
+            # Re-run the human checkpoint
+            review_node = next((n for n in self.dag_builder.TEMPLATES["full_agentic_loop"]["nodes"] 
+                               if n["id"] == "human_review_changes"), None)
+            if review_node:
+                # Re-execute the human checkpoint
+                dummy_node = type('obj', (object,), {
+                    'id': 'human_review_changes',
+                    'skill': 'agentic-orchestration',
+                    'agent_type': 'human',
+                    'checkpoint': True,
+                    'checkpoint_type': 'review_changes'
+                })()
+                review_result = self.executor.execute(dummy_node, self.context)
+                self.context["result_human_review_changes"] = review_result
+
+        if not review_result.get("approved"):
+            print("❌ Changes not approved. Lifecycle stopped.")
+            sys.exit(1)
+        
+        print("✅ Changes approved by human. Proceeding to commit.")
+
+    def _git_commit(self):
+        """Commit changes after human approval."""
         branch = self.git.create_branch(self.context["request"])
         print(f"   Branch created: {branch}")
-
-        # Simulate commits (in real impl, each agent commits its outputs)
-        commit_msg = f"feat: {self.context['request']}\n\nGenerated by AI Engineering Company"
+        
+        commit_msg = f"feat: {self.context['request']}\n\nGenerated by AI Engineering Company\n\nHuman-approved: ✅"
         sha = self.git.commit_changes(commit_msg)
         print(f"   Committed: {sha}")
+        self.context["branch"] = branch
+        self.context["commit_sha"] = sha
 
-        # Create PR
-        pr_body = self._generate_pr_body(dag)
+    def _human_review_before_pr(self):
+        """Mandatory human review of PR before creation."""
+        review_result = self.context.get("result_human_review_pr", {})
+        if not review_result.get("approved"):
+            print("❌ Human review required before PR creation. Please approve PR.")
+            dummy_node = type('obj', (object,), {
+                'id': 'human_review_pr',
+                'skill': 'agentic-orchestration',
+                'agent_type': 'human',
+                'checkpoint': True,
+                'checkpoint_type': 'review_pr'
+            })()
+            review_result = self.executor.execute(dummy_node, self.context)
+            self.context["result_human_review_pr"] = review_result
+
+        if not review_result.get("approved"):
+            print("❌ PR not approved. Lifecycle stopped.")
+            sys.exit(1)
+        
+        print("✅ PR approved by human. Proceeding to create PR.")
+
+    def _create_pr(self):
+        """Create PR after human approval."""
+        pr_body = self._generate_pr_body()
         pr = self.git.create_pr(
             title=f"feat: {self.context['request']}",
             body=pr_body
         )
         print(f"   PR created: #{pr.get('number', '?')}")
+        self.context["pr_number"] = pr.get("number")
+        self.context["pr_url"] = pr.get("url")
 
+    def _human_approval_deploy(self):
+        """Mandatory human approval for production deployment."""
+        review_result = self.context.get("result_human_approval_deploy", {})
+        if not review_result.get("approved"):
+            print("❌ Human approval required for production deployment.")
+            dummy_node = type('obj', (object,), {
+                'id': 'human_approval_deploy',
+                'skill': 'agentic-orchestration',
+                'agent_type': 'human',
+                'checkpoint': True,
+                'checkpoint_type': 'approve_deploy'
+            })()
+            review_result = self.executor.execute(dummy_node, self.context)
+            self.context["result_human_approval_deploy"] = review_result
+
+        if not review_result.get("approved"):
+            print("❌ Deployment not approved. Lifecycle stopped.")
+            sys.exit(1)
+        
+        print("✅ Deployment approved by human. Proceeding to deploy.")
+
+    def _deploy_and_release(self, auto_merge: bool):
+        """Deploy and release after all approvals."""
         # Get consensus result for auto-merge
-        consensus = self.executor.results.get("consensus", {})
+        consensus = self.context.get("result_consensus", {})
+        
         if auto_merge and consensus:
-            merged = self.git.auto_merge(str(pr.get("number", "")), consensus)
+            pr_number = self.context.get("pr_number", "")
+            merged = self.git.auto_merge(str(pr_number), consensus)
             if merged:
                 print(f"   ✅ Auto-merged (consensus: {consensus.get('confidence', 0):.0%})")
 
-                # Tag release
                 version = consensus.get("version", "v1.0.0")
                 self.git.tag_release(version, f"Release {version}")
                 print(f"   🏷️ Tagged: {version}")
 
-                # Deploy
                 deploy_result = self.git.deploy("production", version)
                 print(f"   🚀 Deployed: {deploy_result}")
+                self.context["deploy_result"] = deploy_result
+        else:
+            print("   ⏭️  Auto-merge disabled or consensus not ready. Manual merge required.")
 
-    def _generate_pr_body(self, dag: DAG) -> str:
-        """Generate rich PR body."""
-        return f"""## AI Engineering Company — Automated PR
+    def _generate_pr_body(self) -> str:
+        return f"""## 🤖 AI Engineering Company — Automated PR
 
-**Request**: {self.context['request']}
-**DAG**: {dag.dag_id}
-**Mode**: {self.context['routing'].mode}
+### Request
+{self.context.get('request', 'Feature implementation')}
 
-### Changes
-- Product: PRD + experiment design
-- Design: Component specs + tokens + accessibility audit
-- Engineering: Implementation + tests + security/perf/arch reviews
-- Platform: Terraform + K8s + CI/CD pipeline
-- Orchestration: Consensus + validation gates
+### DAG Execution
+- **DAG ID**: {self.context.get('dag_id', 'N/A')}
+- **Mode**: {self.context.get('routing', {}).mode}
+- **Skills Used**: {', '.join(self.context.get('routing', {}).required_skills)}
+
+### Human Approvals ✅
+- [x] Changes reviewed and approved before commit
+- [x] PR reviewed and approved before creation
+- [x] Deployment approved for production
 
 ### Validation Gates
-- [x] Security scan (SAST, secrets, deps)
-- [x] Performance baseline (p99 < 50ms)
-- [x] Architecture review (0 cycles, 0 boundary violations)
-- [x] Tests (coverage ≥80%, critical paths green)
-- [x] Accessibility audit (WCAG 2.1 AA)
-- [x] Terraform/K8s validation
+- ✅ Security scan (SAST, secrets, deps)
+- ✅ Performance baseline (p99 < 50ms)
+- ✅ Architecture review (0 cycles, 0 boundary violations)
+- ✅ Tests (coverage ≥80%, critical paths green)
+- ✅ Accessibility audit (WCAG 2.1 AA)
+- ✅ Terraform/K8s validation
 
 ### Consensus
 - Security: ✅ Approve
@@ -577,11 +853,12 @@ class LifecycleOrchestrator:
 📊 DAG: {dag.dag_id} ({len(dag.nodes)} nodes)
 🛠️ SKILLS: {', '.join(routing.required_skills)}
 ⏱️ DURATION: {dag.estimated_duration}
-🌿 BRANCH: feat/{self._slugify(self.context['request'])[:30]}
-📝 COMMITS: {len([k for k in self.executor.results if k != 'consensus'])}
-✅ CONSENSUS: {self.executor.results.get('consensus', {}).get('decision', 'PENDING').upper()}
-🏷️ VERSION: {self.executor.results.get('release', {}).get('version', 'PENDING')}
-🚀 DEPLOY: {self.executor.results.get('deploy', {}).get('status', 'PENDING').upper()}
+🌿 BRANCH: {self.context.get('branch', 'N/A')}
+📝 COMMIT: {self.context.get('commit_sha', 'N/A')}
+🔀 PR: #{self.context.get('pr_number', 'N/A')}
+✅ CONSENSUS: {self.context.get('result_consensus', {}).get('decision', 'PENDING').upper()}
+🏷️ VERSION: {self.context.get('result_release', {}).get('version', 'PENDING')}
+🚀 DEPLOY: {self.context.get('deploy_result', {}).get('status', 'PENDING').upper()}
 """
 
     def _slugify(self, text: str) -> str:

@@ -259,3 +259,76 @@ Every agent execution must emit:
 | Human checkpoint latency | <30min business hours |
 | End-to-end task time | <30min typical |
 | Token cost per task | Track & budget |
+
+## Mandatory Human Approval Gates
+
+The AI Engineering Company enforces **three mandatory human approval gates** that no automated process can bypass:
+
+### Gate 1: Review Changes Before Commit
+- **When**: After all agent execution completes, before `git commit`
+- **What Human Reviews**:
+  - All agent outputs (PRD, specs, code, tests, infra plans)
+  - Validation gate results (security, perf, arch, tests, a11y, infra)
+  - File diffs and change summaries
+- **Required**: ✅ Yes — No commit without explicit approval
+- **On Reject**: Human provides feedback → agents revise → re-review
+
+### Gate 2: Review PR Before Creation
+- **When**: After commit, before `gh pr create`
+- **What Human Reviews**:
+  - PR title and body (generated template)
+  - Validation gate statuses
+  - Consensus results and confidence
+  - Deployment plan summary
+- **Required**: ✅ Yes — No PR created without explicit approval
+- **On Reject**: Human provides feedback → PR body revised → re-review
+
+### Gate 3: Approve Production Deployment
+- **When**: After consensus approval, before production deploy
+- **What Human Reviews**:
+  - Version and release notes
+  - PR link and consensus results
+  - Deployment plan (canary steps, rollback plan)
+  - SLO thresholds and rollback triggers
+- **Required**: ✅ Yes — No production deploy without explicit approval
+- **On Reject**: Deployment cancelled; lifecycle stops
+
+### Gate Implementation (Python)
+```python
+class HumanApprovalGate:
+    @staticmethod
+    def request_approval(gate_type: str, context: Dict, details: Dict = None) -> Dict:
+        """Interactive prompt for human approval."""
+        gate_labels = {
+            "review_changes": "📝 REVIEW CHANGES BEFORE COMMIT",
+            "review_pr": "📋 REVIEW PR BEFORE CREATION",
+            "approve_deploy": "🚀 APPROVE PRODUCTION DEPLOYMENT"
+        }
+        
+        print(f"⏸️  HUMAN APPROVAL REQUIRED: {gate_labels[gate_type]}")
+        # Show context-specific summary...
+        
+        while True:
+            choice = input("Your decision [a/r/x]: ").strip().lower()
+            if choice in ('a', 'approve', 'y', 'yes'):
+                return {"approved": True, "action": "approve"}
+            elif choice in ('r', 'request', 'changes'):
+                feedback = input("Required changes: ").strip()
+                return {"approved": False, "action": "request_changes", "feedback": feedback}
+            elif choice in ('x', 'abort'):
+                sys.exit(0)
+```
+
+### Gate Enforcement in DAG
+```python
+# DAG nodes with mandatory human checkpoints
+nodes = [
+    {"id": "consensus", "checkpoint": True, "checkpoint_type": "consensus"},
+    {"id": "human_review_changes", "checkpoint": True, "checkpoint_type": "review_changes", "deps": ["consensus"]},
+    {"id": "human_review_pr", "checkpoint": True, "checkpoint_type": "review_pr", "deps": ["human_review_changes"]},
+    {"id": "human_approval_deploy", "checkpoint": True, "checkpoint_type": "approve_deploy", "deps": ["human_review_pr"]},
+    {"id": "deploy", "deps": ["human_approval_deploy"]},
+]
+```
+
+**No commit, PR, or deployment proceeds without explicit human approval at each gate.**
