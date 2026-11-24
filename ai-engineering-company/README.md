@@ -32,15 +32,16 @@ Copy the **SYSTEM PROMPT** from `universal-prompt.md` into:
 - Routes to: Single skill, Targeted parallel, or Full agentic loop
 - Always includes Orchestration for multi-skill work
 
-### 🔄 Agentic Delivery Loop
+### 🔄 Agentic Delivery Loop (Enhanced)
 ```
-1. INTAKE & ROUTING     → Analyze request → Identify skills → Create DAG
-2. STRATEGY & SPEC      → PRD + Experiment + Component specs + Tokens
-3. ARCHITECTURE PLAN    → ADRs + Architecture + Infra plan
-4. IMPLEMENTATION       → Code + Components + Tests + IaC + Pipelines
-5. VALIDATION & CONSENSUS → All gates → Weighted consensus → HITL
-6. DEPLOY & RELEASE     → Canary → Progressive → Full → Monitor
-7. LEARN & ITERATE      → Metrics → Experiments → Next cycle
+1. INTAKE & ROUTING       → Analyze request → Identify skills → Create DAG
+2. 📋 PLANNING PHASE       → Detailed feature plan with human iteration
+3. STRATEGY & SPEC        → PRD + Experiment + Component specs + Tokens
+4. ARCHITECTURE PLAN      → ADRs + Architecture + Infra plan
+5. IMPLEMENTATION         → Code + Components + Tests + IaC + Pipelines
+6. VALIDATION & CONSENSUS → All gates → Weighted consensus → HITL
+6. DEPLOY & RELEASE       → Canary → Progressive → Full → Monitor
+7. LEARN & ITERATE        → Metrics → Experiments → Next cycle
 ```
 
 ### 🤖 Parallel Agent Execution with Validation
@@ -55,17 +56,65 @@ Copy the **SYSTEM PROMPT** from `universal-prompt.md` into:
 - **Weights**: Security 30%, Architecture 30%, Performance 20%, Test 20%
 - **Quorum**: 66% (80% for production deploy)
 - **Veto**: Security/Architect can veto
-- **HITL Gates**: Production deploy, schema changes, security exceptions
+- **HITL Gates**: Plan approval, commit, PR, production deploy
 
-### 🌿 Git Workflow Automation
+### 🌿 Git Workflow Automation (Enhanced)
 ```
-Feature Request → Branch → Parallel Commits → PR → Gates → Consensus → Auto-merge → Tag → Deploy
+Feature Request → 📋 PLANNING → Branch → Parallel Commits → PR → Gates → Consensus → Auto-merge → Tag → Deploy
+                      ↑
+              Human approves plan
 ```
 
-### 🚀 Progressive Deployment
+### 🚀 Progressive Deployment (Enhanced)
 - **Canary**: 5% → 25% → 50% → 100% over 2 hours
 - **SLO Gates**: Auto-rollback on burn rate >1x
-- **Feature Flags**: Instant rollback without deploy
+- **Feature Flags**: Instant rollback without deploy (default: off)
+- **Rollback Hierarchy**: Flag → Git revert → DB rollback → Full restore
+- **Observability**: SLO dashboards, burn rate alerts, runbook links
+
+---
+
+## 🆕 New Capabilities
+
+### 📋 Planning Phase (NEW)
+Before any implementation, a detailed feature plan is created and approved:
+- Problem statement, proposed solution, technical approach
+- Acceptance criteria, risks/mitigations, dependencies
+- Effort estimate, milestones, feature flags
+- Test strategy, rollback plan, ADR references
+- **Human iterates and approves before implementation**
+
+### 🔍 Template Detection (NEW)
+- **Commits**: Detects `.github/commit-message.txt`, `.gitmessage`, `.commit-template` → falls back to Conventional Commits
+- **PRs**: Detects `.github/pull_request_template.md`, `PULL_REQUEST_TEMPLATE.md` → falls back to standard
+- **Conventions**: Detects `.github/commit-convention.md` → guides template rendering
+
+### 🚩 Feature Flags (NEW)
+- Every feature gets a flag (default: **off**) for instant rollback
+- Rollout strategies: canary, progressive, instant
+- Targeting support for segments/environments
+
+### 📝 Architecture Decision Records (NEW)
+- Every significant decision recorded as ADR in `adr/` directory
+- Standard format: Context → Decision → Consequences → Alternatives
+- Linked from feature plans, PRs, and handoffs
+
+### 🔄 Rollback Automation (NEW)
+- **Hierarchy**: Feature flag off → Git revert → DB migration down → Full DB restore
+- Documented in feature plan, implemented in deployment
+- Verification steps for each rollback method
+
+### 🤝 Weighted Consensus + 4 HITL Gates
+- **Weights**: Security 30%, Architecture 30%, Performance 20%, Test 20%
+- **Quorum**: 66% (80% for production deploy)
+- **Veto**: Security/Architect can veto
+- **4 HITL Gates**: Plan → Commit → PR → Deploy
+
+### 🚀 Progressive Deployment (Enhanced)
+- **Canary**: 5% → 25% → 50% → 100% over 2 hours
+- **SLO Gates**: Auto-rollback on burn rate >1x
+- **Feature Flags**: Instant rollback without deploy (default: off)
+- **Rollback Hierarchy**: Flag → Git revert → DB rollback → Full restore
 - **Observability**: SLO dashboards, burn rate alerts, runbook links
 
 ---
@@ -85,8 +134,8 @@ ai-engineering-company/
 │   ├── git-workflow.md         # Branch, commit, PR, merge, release
 │   └── release-management.md   # Versioning, changelogs, rollback
 ├── scripts/                    # Deterministic Python scripts
-│   ├── full-lifecycle.py       # End-to-end: intake → release
-│   ├── create-pr.py            # PR with validation gates
+│   ├── full-lifecycle.py       # End-to-end: intake → planning → release
+│   ├── create-pr.py            # PR with template detection
 │   ├── auto-merge.py           # Consensus-gated auto-merge
 │   ├── tag-release.py          # Semantic versioning + tagging
 │   └── deploy.py               # Progressive deployment
@@ -115,10 +164,10 @@ ai-engineering-company/
 ### Full Lifecycle (One Command)
 ```bash
 # Complete: request → plan → execute → validate → consensus → merge → tag → deploy
-python scripts/full-lifecycle.py "Add real-time notifications with WebSocket and fallback" --auto-merge
+python skills/ai-engineering-company/scripts/full-lifecycle.py "Add real-time notifications with WebSocket and fallback" --auto-merge
 
 # Dry run (show plan only)
-python scripts/full-lifecycle.py "Add user dashboard" --dry-run
+python skills/ai-engineering-company/scripts/full-lifecycle.py "Add user dashboard" --dry-run
 ```
 
 ### Individual Components
@@ -187,9 +236,12 @@ MIT — Use freely in any project, commercial or personal.
 
 The AI Engineering Company is a **complete agentic software development organization** where:
 - Every request goes through intelligent routing
+- **Every feature starts with a detailed, human-approved plan**
 - Specialized agents execute in parallel with validation
-- Consensus ensures quality before merge
-- Human checkpoints protect critical decisions
+- **Every commit, PR, and deployment requires human approval**
+- **Templates detected from project, falling back to standards**
+- **Feature flags for instant, safe rollback**
+- **Architecture decisions recorded as formal ADRs**
 - Every deployment is observable and reversible
 - The loop closes with metrics → experiments → next cycle
 

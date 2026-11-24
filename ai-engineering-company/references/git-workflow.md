@@ -91,6 +91,108 @@ refactor(user): extract UserRepository interface
 Part of ADR-047
 ```
 
+## Template Detection (NEW)
+
+The system automatically detects and uses project-specific templates for commits and PRs.
+
+### Commit Message Template Detection
+
+Search order (first match wins):
+1. `.github/commit-message.txt`
+2. `.gitmessage`
+3. `.gitmessage.txt`
+4. `commit-template.txt`
+5. `.commit-template`
+
+**Fallback**: Standard Conventional Commits format
+
+```python
+# TemplateDetector class handles detection
+COMMIT_TEMPLATE_PATHS = [
+    ".github/commit-message.txt",
+    ".gitmessage",
+    ".gitmessage.txt",
+    "commit-template.txt",
+    ".commit-template",
+]
+```
+
+### PR Description Template Detection
+
+Search order:
+1. `.github/pull_request_template.md`
+2. `.github/PULL_REQUEST_TEMPLATE.md`
+3. `PULL_REQUEST_TEMPLATE.md`
+4. `pull_request_template.md`
+
+**Fallback**: Standard PR template with gates, consensus, deployment plan
+
+### Commit Convention Detection
+
+Search order:
+1. `.github/commit-convention.md`
+2. `COMMIT_CONVENTION.md`
+3. `.commit-convention`
+
+Used to validate commits and guide template rendering.
+
+### Template Configuration
+
+Add to your project for custom templates:
+```
+# Commit template
+echo 'feat(scope): subject
+
+body
+
+footer' > .github/commit-message.txt
+
+# PR template
+cat > .github/pull_request_template.md << 'EOF'
+## Description
+...
+
+## Checklist
+- [ ] Tests pass
+- [ ] Documentation updated
+EOF
+
+# Convention guide
+cat > .github/commit-convention.md << 'EOF'
+# Commit Convention
+...
+EOF
+```
+
+## Planning Phase (NEW)
+
+Before any implementation, a detailed feature plan is created and approved.
+
+### Planning Phase in Git Workflow
+
+```
+1. Feature Request → Routing → DAG Creation
+2. 📋 PLANNING PHASE
+   - Agent creates detailed feature plan
+   - Human reviews/iterates until approved
+   - Plan stored as context for all downstream agents
+3. Implementation (follows approved plan)
+4. Human Gates (Changes → PR → Deploy)
+```
+
+### Plan Artifacts Stored in Git
+
+- **Feature Plan**: Stored as `docs/plans/<feature-slug>.md` or in PR description
+- **ADRs**: Stored in `adr/` directory, linked from plan
+- **Feature Flags**: Defined in plan, implemented in code
+- **Rollback Plan**: Documented in plan, implemented in deployment
+
+### Plan Approval Gates
+
+| Gate | When | What | Required |
+|------|------|------|----------|
+| Plan Approval | Before implementation | Problem, solution, approach, criteria, risks, milestones, flags, test strategy, rollback | ✅ |
+
 ## PR Workflow
 
 ### PR Lifecycle (with Mandatory Human Approval Gates)

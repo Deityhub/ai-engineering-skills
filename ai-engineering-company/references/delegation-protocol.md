@@ -332,3 +332,327 @@ nodes = [
 ```
 
 **No commit, PR, or deployment proceeds without explicit human approval at each gate.**
+
+## Planning Phase Protocol (NEW)
+
+Before any implementation begins, a **detailed feature plan** must be created, reviewed, and approved by a human. This ensures alignment, catches issues early, and provides a clear implementation roadmap.
+
+### Planning Phase Flow
+
+```python
+class PlanningPhase:
+    def create_initial_plan(self, request: str, context: Dict) -> FeaturePlan:
+        """Create structured plan from request."""
+        return FeaturePlan(
+            request=request,
+            problem_statement=self._extract_problem(request),
+            proposed_solution=self._propose_solution(request, skills),
+            technical_approach=self._outline_technical_approach(skills),
+            acceptance_criteria=self._generate_acceptance_criteria(request),
+            risks_and_mitigations=self._identify_risks(skills),
+            dependencies=self._identify_dependencies(skills),
+            effort_estimate=self._estimate_effort(skills),
+            milestones=self._define_milestones(skills),
+            feature_flags=self._propose_feature_flags(request),
+            test_strategy=self._outline_test_strategy(skills),
+            rollback_plan=self._outline_rollback_plan(skills),
+        )
+    
+    def present_plan_for_approval(self, plan: FeaturePlan) -> Dict:
+        """Interactive human review with iteration loop."""
+        while True:
+            print(f"📋 FEATURE PLAN v{plan.version}: {plan.request}")
+            # Display: problem, solution, approach, criteria, risks, milestones, flags, test strategy, rollback
+            
+            choice = input("[a] Approve  [r] Request Changes  [x] Abort: ")
+            if choice == 'a':
+                plan.approved = True
+                return {"approved": True, "plan": plan}
+            elif choice == 'r':
+                feedback = input("Required changes: ")
+                plan = self.iterate_plan(plan, feedback)
+            elif choice == 'x':
+                sys.exit(0)
+```
+
+### Feature Plan Structure
+
+```python
+@dataclass
+class FeaturePlan:
+    request: str
+    problem_statement: str
+    proposed_solution: str
+    technical_approach: str
+    acceptance_criteria: List[str]
+    risks_and_mitigations: List[Dict[str, str]]
+    dependencies: List[str]
+    effort_estimate: str
+    milestones: List[Dict[str, str]]
+    feature_flags: List[Dict[str, Any]]
+    adr_references: List[str]
+    test_strategy: str
+    rollback_plan: str
+    approved: bool = False
+    version: int = 1
+    feedback_history: List[Dict[str, str]] = field(default_factory=list)
+```
+
+### Plan Review Checklist (Human)
+
+- [ ] **Problem Statement**: Clear, specific, measurable
+- [ ] **Proposed Solution**: Addresses problem, feasible
+- [ ] **Technical Approach**: Uses appropriate skills, follows patterns
+- [ ] **Acceptance Criteria**: Specific, measurable, testable
+- [ ] **Risks & Mitigations**: Realistic, actionable
+- [ ] **Dependencies**: Identified, manageable
+- [ ] **Effort Estimate**: Realistic, includes buffer
+- [ ] **Milestones**: Clear, time-bound, measurable
+- [ ] **Feature Flags**: Named, described, default off
+- [ ] **Test Strategy**: Unit, integration, contract, a11y
+- [ ] **Rollback Plan**: Feature flag → git revert → DB rollback
+
+### Iteration Loop
+
+```
+Human reviews plan
+    │
+    ├─▶ Approve → Proceed to implementation
+    │
+    └─▶ Request Changes
+            │
+            ▼
+        Agent incorporates feedback
+            │
+            ▼
+        Plan version incremented
+            │
+            ▼
+        Re-present to human
+            │
+            ▼
+        (Repeat until approved)
+```
+
+## Template Detection Protocol (NEW)
+
+The system automatically detects and uses project-specific templates:
+
+### Commit Message Templates
+
+Search order (first match wins):
+1. `.github/commit-message.txt`
+2. `.gitmessage`
+3. `.gitmessage.txt`
+4. `commit-template.txt`
+5. `.commit-template`
+
+**Fallback**: Standard Conventional Commits format
+
+```python
+class TemplateDetector:
+    COMMIT_TEMPLATE_PATHS = [
+        ".github/commit-message.txt",
+        ".gitmessage",
+        ".gitmessage.txt",
+        "commit-template.txt",
+        ".commit-template",
+    ]
+    
+    def detect_commit_template(self) -> Optional[str]:
+        for path in self.COMMIT_TEMPLATE_PATHS:
+            full_path = self.repo_path / path
+            if full_path.exists():
+                return full_path.read_text()
+        return None
+    
+    def render_commit_message(self, request: str, context: Dict, template: str = None) -> str:
+        if template is None:
+            template = self.get_default_commit_template()
+        type_scope = self._infer_type_scope(request)
+        return template.replace("<type>(<scope>): <subject>", f"{type_scope}: {request[:50]}")
+```
+
+### PR Description Templates
+
+Search order:
+1. `.github/pull_request_template.md`
+2. `.github/PULL_REQUEST_TEMPLATE.md`
+3. `PULL_REQUEST_TEMPLATE.md`
+4. `pull_request_template.md`
+
+**Fallback**: Standard PR template with gates, consensus, deployment plan
+
+### Commit Convention Detection
+
+Search order:
+1. `.github/commit-convention.md`
+2. `COMMIT_CONVENTION.md`
+3. `.commit-convention`
+
+Used to validate commit messages and guide template rendering.
+
+## Feature Flags & Rollback Protocol (NEW)
+
+Every feature implementation includes feature flag management:
+
+### Feature Flag Specification
+
+```python
+feature_flags = [
+    {
+        "name": "feature-realtime-notifications",
+        "description": "Enable real-time WebSocket notifications",
+        "default": False,           # Always off by default
+        "rollout_strategy": "canary",  # canary, progressive, instant
+        "targeting": {},            # Optional: user segments, environments
+        "owner": "platform-team",
+        "expiry": "2026-12-31",     # Optional: auto-cleanup date
+    }
+]
+```
+
+### Rollback Hierarchy (Fastest to Slowest)
+
+| Method | Time | Data Risk | When |
+|--------|------|-----------|------|
+| **Feature Flag Off** | <1 min | None | Feature bug, flag exists |
+| **Git Revert** | 2-5 min | Low | Code bug, no flag |
+| **DB Migration Down + Code Revert** | 5-15 min | Medium | Schema migration issue |
+| **Full DB Restore + Code Revert** | 15-60 min | High | Data corruption |
+
+### Rollback Plan Template (in Feature Plan)
+
+```markdown
+## Rollback Plan
+1. **Feature Flag**: Disable `feature-xyz` in LaunchDarkly/Unleash (instant)
+2. **Code Revert**: `git revert <merge-sha> -m 1` → auto-redeploy
+3. **DB Rollback**: Run down migration `migrate down 1` + code revert
+4. **Full Restore**: Restore DB from backup + code revert (last resort)
+
+### Verification Steps
+- [ ] Error rates return to baseline
+- [ ] Latency returns to baseline  
+- [ ] Business metrics normalize
+- [ ] No error budget burn
+```
+
+## Architecture Decision Records (NEW)
+
+Every significant technical decision is recorded as an ADR.
+
+### ADR Format
+
+```markdown
+# ADR-001: Use Redis Pub/Sub for Real-time Notifications
+
+## Status
+Accepted
+
+## Context
+Need real-time message delivery for notification feature. 
+Options: Redis Pub/Sub, RabbitMQ, Kafka, Server-Sent Events.
+
+## Decision
+Use Redis Pub/Sub with fallback to HTTP long-polling.
+
+## Consequences
+### Positive
+- Low latency (<5ms)
+- Simple operations (Redis already in stack)
+- Built-in pub/sub semantics
+
+### Negative
+- No message persistence (acceptable for notifications)
+- Single point of failure (mitigated by Redis Sentinel)
+
+## Alternatives Considered
+- RabbitMQ: More complex ops, overkill for pub/sub
+- Kafka: Overkill, higher latency
+- SSE: No bidirectional, browser limits
+
+## Related
+- PR #247
+- Feature plan v3
+```
+
+### ADR Template
+
+```markdown
+# ADR-XXX: [Title]
+
+## Status
+[Proposed | Accepted | Deprecated | Superseded]
+
+## Context
+[What situation demands a decision?]
+
+## Decision
+[What we decided to do]
+
+## Consequences
+### Positive
+- [Benefit 1]
+- [Benefit 2]
+
+### Negative
+- [Drawback 1]
+- [Mitigation]
+
+## Alternatives Considered
+- [Option 1]: [Why rejected]
+- [Option 2]: [Why rejected]
+
+## Related
+- [PR #, Issue #, Feature plan version]
+```
+
+### ADR Integration in Workflow
+
+1. **During Planning**: Identify decisions needing ADRs
+2. **During Architecture Review**: Create ADRs for key decisions
+3. **In PR Description**: Link relevant ADRs
+4. **In Feature Plan**: Reference ADRs for context
+5. **In Handoffs**: Include ADR references for downstream agents
+
+### ADR Storage
+
+```
+adr/
+├── 001-use-redis-pubsub.md
+├── 002-adopt-event-sourcing.md
+├── 003-migrate-to-postgresql.md
+└── 004-deprecate-legacy-auth.md
+```
+
+Naming: `NNN-kebab-case-title.md` (zero-padded, sequential)
+
+## Updated DAG with New Phases
+
+```python
+# Full agentic loop DAG with all phases
+nodes = [
+    {"id": "planning", "skill": "agentic-orchestration", "agent": "planner", "deps": [], "checkpoint": True, "checkpoint_type": "review_plan"},
+    {"id": "strategy_spec", "skill": "product-engineering", "agent": "product", "deps": ["planning"], "checkpoint": False},
+    {"id": "design_specs", "skill": "design-skill", "agent": "designer", "deps": ["planning"], "checkpoint": False},
+    {"id": "security_review", "skill": "staff-engineer", "agent": "security", "deps": ["strategy_spec", "design_specs"], "checkpoint": False},
+    {"id": "perf_baseline", "skill": "staff-engineer", "agent": "performance", "deps": ["strategy_spec", "design_specs"], "checkpoint": False},
+    {"id": "arch_review", "skill": "staff-engineer", "agent": "architect", "deps": ["strategy_spec", "design_specs"], "checkpoint": False},
+    {"id": "infra_plan", "skill": "platform-engineer", "agent": "platform", "deps": ["arch_review"], "checkpoint": False},
+    {"id": "implementation", "skill": "staff-engineer", "agent": "coder", "deps": ["security_review", "arch_review", "infra_plan"], "checkpoint": False},
+    {"id": "component_build", "skill": "design-skill", "agent": "designer", "deps": ["design_specs", "arch_review"], "checkpoint": False},
+    {"id": "integration_test", "skill": "staff-engineer", "agent": "tester", "deps": ["implementation", "perf_baseline", "component_build"], "checkpoint": False},
+    {"id": "consensus", "skill": "agentic-orchestration", "agent": "coordinator", "deps": ["security_review", "perf_baseline", "arch_review", "integration_test", "infra_plan"], "checkpoint": True, "checkpoint_type": "consensus"},
+    {"id": "human_review_changes", "skill": "agentic-orchestration", "agent": "human", "deps": ["consensus"], "checkpoint": True, "checkpoint_type": "review_changes"},
+    {"id": "human_review_pr", "skill": "agentic-orchestration", "agent": "human", "deps": ["human_review_changes"], "checkpoint": True, "checkpoint_type": "review_pr"},
+    {"id": "human_approval_deploy", "skill": "agentic-orchestration", "agent": "human", "deps": ["human_review_pr"], "checkpoint": True, "checkpoint_type": "approve_deploy"},
+    {"id": "deploy", "skill": "platform-engineer", "agent": "platform", "deps": ["human_approval_deploy"], "checkpoint": False},
+    {"id": "release", "skill": "agentic-orchestration", "agent": "release", "deps": ["deploy"], "checkpoint": False},
+]
+```
+
+**Total Gates: 5 (Plan, Consensus, Changes, PR, Deploy)**
+
+---
+
+*End of Delegation Protocol — All agents must follow these protocols for consistent, safe, and auditable execution.*
